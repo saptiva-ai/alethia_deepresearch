@@ -1,8 +1,10 @@
 import os
+
 import yaml
-from typing import List
-from domain.models.plan import ResearchPlan, ResearchSubTask
+
 from adapters.saptiva_model.saptiva_client import SaptivaModelAdapter
+from domain.models.plan import ResearchPlan, ResearchSubTask
+
 
 class PlannerService:
     def __init__(self):
@@ -16,12 +18,12 @@ class PlannerService:
         """
         try:
             prompt = self._build_prompt(query)
-            
+
             response = self.model_adapter.generate(
                 model=self.planner_model,
                 prompt=prompt
             )
-            
+
             plan_yaml = response.get("content", "")
             return self._parse_plan(query, plan_yaml)
         except Exception as e:
@@ -48,7 +50,7 @@ Research Plan (YAML):
             if not isinstance(sub_tasks_data, list):
                 print(f"Warning: Planner did not return a list of sub-tasks. Got: {sub_tasks_data}")
                 return ResearchPlan(
-                    main_query=main_query, 
+                    main_query=main_query,
                     sub_tasks=[ResearchSubTask(id="T01", query=main_query, sources=["web"])]
                 )
 

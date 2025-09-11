@@ -2,10 +2,11 @@
 Global pytest configuration and fixtures for Aletheia Deep Research tests.
 """
 import asyncio
+from collections.abc import Generator
 import os
-import pytest
-from typing import AsyncGenerator, Generator
 from unittest.mock import Mock, patch
+
+import pytest
 
 # Set test environment
 os.environ["ENVIRONMENT"] = "test"
@@ -71,7 +72,7 @@ def mock_weaviate_client():
 def sample_research_plan():
     """Sample research plan for testing."""
     from domain.models.plan import ResearchPlan, ResearchSubTask
-    
+
     return ResearchPlan(
         main_query="Test research query",
         sub_tasks=[
@@ -81,7 +82,7 @@ def sample_research_plan():
                 sources=["web", "academic"]
             ),
             ResearchSubTask(
-                id="task_2", 
+                id="task_2",
                 query="Test sub-query 2",
                 sources=["web", "news"]
             )
@@ -92,9 +93,10 @@ def sample_research_plan():
 @pytest.fixture
 def sample_evidence_list():
     """Sample evidence list for testing."""
-    from domain.models.evidence import Evidence, EvidenceSource
     from datetime import datetime
-    
+
+    from domain.models.evidence import Evidence, EvidenceSource
+
     return [
         Evidence(
             id="evidence_1",
@@ -112,7 +114,7 @@ def sample_evidence_list():
         Evidence(
             id="evidence_2",
             source=EvidenceSource(
-                url="https://example.com/2", 
+                url="https://example.com/2",
                 title="Test Source 2",
                 fetched_at=datetime.utcnow()
             ),
@@ -128,8 +130,8 @@ def sample_evidence_list():
 @pytest.fixture
 def sample_completion_score():
     """Sample completion score for testing."""
-    from domain.models.evaluation import CompletionScore, CompletionLevel
-    
+    from domain.models.evaluation import CompletionLevel, CompletionScore
+
     return CompletionScore(
         overall_score=0.75,
         completion_level=CompletionLevel.ADEQUATE,
@@ -184,8 +186,9 @@ async def writer_service(mock_saptiva_client, mock_weaviate_client):
 async def test_client():
     """FastAPI test client."""
     from fastapi.testclient import TestClient
+
     from apps.api.main import app
-    
+
     with TestClient(app) as client:
         yield client
 

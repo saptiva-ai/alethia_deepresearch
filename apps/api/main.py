@@ -1,25 +1,24 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException, status
-from pydantic import BaseModel
-import uuid
-import time
 import os
+import uuid
+
 from dotenv import load_dotenv
+from fastapi import BackgroundTasks, FastAPI, HTTPException, status
+from pydantic import BaseModel
 
 # Load environment variables from .env file
 load_dotenv()
 
 # Initialize observability early
 from adapters.telemetry.tracing import setup_telemetry
-from adapters.telemetry.events import get_event_logger
 
 # Setup telemetry
 telemetry_manager = setup_telemetry()
 
 # Domain Services
+from domain.services.iterative_research_svc import IterativeResearchOrchestrator
 from domain.services.planner_svc import PlannerService
 from domain.services.research_svc import ResearchService
 from domain.services.writer_svc import WriterService
-from domain.services.iterative_research_svc import IterativeResearchOrchestrator
 
 app = FastAPI(
     title="Aletheia Deep Research API",
@@ -33,6 +32,7 @@ telemetry_manager.instrument_fastapi(app)
 # --- Data Models ---
 
 from typing import Optional
+
 
 class ResearchRequest(BaseModel):
     query: str
@@ -121,10 +121,10 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
             min_completion_score=request.min_completion_score,
             budget=request.budget
         )
-        
+
         # Execute deep research
         result = await orchestrator.execute_deep_research(request.query)
-        
+
         # Store result
         deep_research_tasks[task_id] = {
             "status": "completed",
@@ -155,7 +155,7 @@ async def start_research(request: ResearchRequest, background_tasks: BackgroundT
     # Check for API keys and inform the user if they are missing
     saptiva_key = os.getenv("SAPTIVA_API_KEY")
     tavily_key = os.getenv("TAVILY_API_KEY")
-    
+
     if not saptiva_key or saptiva_key == "pon_tu_api_key_aqui":
         # The Saptiva adapter has a mock mode, so this is a soft warning.
         print("Warning: SAPTIVA_API_KEY is not set. The planner and writer will use mock data.")
@@ -178,7 +178,7 @@ async def get_task_status(task_id: str):
     task = tasks.get(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     return TaskStatus(task_id=task_id, status=task["status"], details=task.get("report", ""))
 
 @app.get("/reports/{task_id}", response_model=Report)
@@ -226,7 +226,7 @@ async def start_deep_research(request: DeepResearchRequest, background_tasks: Ba
     # Check for API keys
     saptiva_key = os.getenv("SAPTIVA_API_KEY")
     tavily_key = os.getenv("TAVILY_API_KEY")
-    
+
     if not saptiva_key or saptiva_key == "pon_tu_api_key_aqui":
         print("Warning: SAPTIVA_API_KEY is not set. Some agents will use mock data.")
 
@@ -236,10 +236,10 @@ async def start_deep_research(request: DeepResearchRequest, background_tasks: Ba
     task_id = str(uuid.uuid4())
     deep_research_tasks[task_id] = {"status": "accepted"}
     background_tasks.add_task(run_deep_research_pipeline, task_id, request)
-    
+
     return TaskStatus(
-        task_id=task_id, 
-        status="accepted", 
+        task_id=task_id,
+        status="accepted",
         details=f"Deep research task accepted. Configuration: {request.max_iterations} iterations, {request.min_completion_score} min score."
     )
 
@@ -255,7 +255,7 @@ async def get_deep_research_report(task_id: str):
     if task["status"] == "completed":
         result = task["result"]
         summary = task["summary"]
-        
+
         return DeepResearchReport(
             status="completed",
             report_md=result.final_report,

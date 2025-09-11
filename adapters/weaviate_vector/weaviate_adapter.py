@@ -1,21 +1,19 @@
-import os
-import weaviate
-from typing import List, Dict, Any, Optional
-import hashlib
-import json
 from datetime import datetime
+import os
 
-from ports.vector_store_port import VectorStorePort
+import weaviate
+
 from domain.models.evidence import Evidence, EvidenceSource
+from ports.vector_store_port import VectorStorePort
 
 
 class WeaviateVectorAdapter(VectorStorePort):
     """Weaviate implementation of VectorStorePort using v3 API."""
-    
+
     def __init__(self):
         self.host = os.getenv("WEAVIATE_HOST", "http://localhost:8080")
         self.mock_mode = False
-        
+
         try:
             # Try to connect to Weaviate using v3 API
             self.client = weaviate.Client(url=self.host)
@@ -28,19 +26,19 @@ class WeaviateVectorAdapter(VectorStorePort):
             print(f"Warning: Weaviate connection failed: {e}. Using mock mode.")
             self.mock_mode = True
             self.client = None
-            
+
         # Mock storage for when Weaviate is not available
-        self.mock_store: Dict[str, List[Dict]] = {}
-    
+        self.mock_store: dict[str, list[dict]] = {}
+
     def store_evidence(self, evidence: Evidence, collection_name: str = "default") -> bool:
         """Store evidence in Weaviate or mock storage."""
         if self.mock_mode:
             return self._mock_store_evidence(evidence, collection_name)
-        
+
         try:
             # Create collection if it doesn't exist
             self.create_collection(collection_name)
-            
+
             # Prepare data object (using evidence_id instead of id - reserved in Weaviate)
             data_object = {
                 "evidence_id": evidence.id,
@@ -54,32 +52,32 @@ class WeaviateVectorAdapter(VectorStorePort):
                 "tags": evidence.tags or [],
                 "cit_key": evidence.cit_key or ""
             }
-            
+
             # Insert object with vector (Weaviate will auto-vectorize based on excerpt)
             self.client.data_object.create(
                 data_object=data_object,
                 class_name=collection_name,
                 uuid=evidence.id
             )
-            
+
             print(f"Stored evidence {evidence.id} in Weaviate collection {collection_name}")
             return True
-            
+
         except Exception as e:
             print(f"Error storing evidence in Weaviate: {e}")
             return False
-    
-    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
+
+    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
         """Search for similar evidence using semantic search."""
         if self.mock_mode:
             return self._mock_search_similar(query, collection_name, limit)
-        
+
         try:
             # Perform semantic search using nearText
             response = (
                 self.client.query
                 .get(collection_name, [
-                    "evidence_id", "excerpt", "source_url", "source_title", 
+                    "evidence_id", "excerpt", "source_url", "source_title",
                     "fetched_at", "hash", "tool_call_id", "score", "tags", "cit_key"
                 ])
                 .with_near_text({
@@ -89,7 +87,7 @@ class WeaviateVectorAdapter(VectorStorePort):
                 .with_limit(limit)
                 .do()
             )
-            
+
             # Convert results to Evidence objects
             results = []
             if "data" in response and "Get" in response["data"] and collection_name in response["data"]["Get"]:
@@ -109,27 +107,27 @@ class WeaviateVectorAdapter(VectorStorePort):
                         cit_key=obj.get("cit_key") or None
                     )
                     results.append(evidence)
-            
+
             print(f"Found {len(results)} similar evidence items for query: {query}")
             return results
-            
+
         except Exception as e:
             print(f"Error searching in Weaviate: {e}")
             return []
-    
+
     def create_collection(self, collection_name: str) -> bool:
         """Create a Weaviate collection/class."""
         if self.mock_mode:
             self.mock_store[collection_name] = []
             return True
-        
+
         try:
             # Check if collection already exists
             schema = self.client.schema.get()
             for class_obj in schema.get("classes", []):
                 if class_obj["class"] == collection_name:
                     return True
-            
+
             # Create collection with schema
             class_definition = {
                 "class": collection_name,
@@ -147,49 +145,49 @@ class WeaviateVectorAdapter(VectorStorePort):
                     {"name": "cit_key", "dataType": ["text"]},
                 ]
             }
-            
+
             self.client.schema.create_class(class_definition)
             print(f"Created Weaviate collection: {collection_name}")
             return True
-            
+
         except Exception as e:
             print(f"Error creating Weaviate collection: {e}")
             return False
-    
+
     def delete_collection(self, collection_name: str) -> bool:
         """Delete a Weaviate collection."""
         if self.mock_mode:
             if collection_name in self.mock_store:
                 del self.mock_store[collection_name]
             return True
-        
+
         try:
             self.client.schema.delete_class(collection_name)
             print(f"Deleted Weaviate collection: {collection_name}")
             return True
-            
+
         except Exception as e:
             print(f"Error deleting Weaviate collection: {e}")
             return False
-    
+
     def health_check(self) -> bool:
         """Check if Weaviate is available."""
         if self.mock_mode:
             return False
-        
+
         try:
             if self.client is None:
                 return False
             return self.client.is_ready()
         except Exception:
             return False
-    
+
     # Mock methods for when Weaviate is not available
     def _mock_store_evidence(self, evidence: Evidence, collection_name: str) -> bool:
         """Mock storage for testing without Weaviate."""
         if collection_name not in self.mock_store:
             self.mock_store[collection_name] = []
-        
+
         # Convert evidence to dict for storage
         evidence_dict = {
             "evidence_id": evidence.id,
@@ -203,20 +201,20 @@ class WeaviateVectorAdapter(VectorStorePort):
             "tags": evidence.tags,
             "cit_key": evidence.cit_key
         }
-        
+
         self.mock_store[collection_name].append(evidence_dict)
         print(f"[MOCK] Stored evidence {evidence.id} in collection {collection_name}")
         return True
-    
-    def _mock_search_similar(self, query: str, collection_name: str, limit: int) -> List[Evidence]:
+
+    def _mock_search_similar(self, query: str, collection_name: str, limit: int) -> list[Evidence]:
         """Mock search for testing without Weaviate."""
         if collection_name not in self.mock_store:
             return []
-        
+
         # Simple keyword matching for mock
         results = []
         query_lower = query.lower()
-        
+
         for evidence_dict in self.mock_store[collection_name]:
             if query_lower in evidence_dict["excerpt"].lower():
                 evidence = Evidence(
@@ -234,9 +232,9 @@ class WeaviateVectorAdapter(VectorStorePort):
                     cit_key=evidence_dict["cit_key"]
                 )
                 results.append(evidence)
-                
+
                 if len(results) >= limit:
                     break
-        
+
         print(f"[MOCK] Found {len(results)} similar evidence items for query: {query}")
         return results

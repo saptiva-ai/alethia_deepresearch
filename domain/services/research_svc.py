@@ -1,11 +1,11 @@
-import uuid
 import hashlib
-from typing import List
-from domain.models.plan import ResearchPlan
-from domain.models.evidence import Evidence, EvidenceSource
+
 from adapters.tavily_search.tavily_client import TavilySearchAdapter
 from adapters.weaviate_vector.weaviate_adapter import WeaviateVectorAdapter
+from domain.models.evidence import Evidence
+from domain.models.plan import ResearchPlan
 from ports.vector_store_port import VectorStorePort
+
 
 class ResearchService:
     def __init__(self):
@@ -16,17 +16,17 @@ class ResearchService:
         except ValueError as e:
             print(f"Disabling search functionality: {e}")
             self.search_enabled = False
-        
+
         # Initialize vector store for RAG
         self.vector_store: VectorStorePort = WeaviateVectorAdapter()
-        
+
         # Check if vector store is healthy
         if self.vector_store.health_check():
             print("Weaviate vector store is healthy and ready.")
         else:
             print("Weaviate not available - using mock vector storage.")
 
-    def execute_plan(self, plan: ResearchPlan) -> List[Evidence]:
+    def execute_plan(self, plan: ResearchPlan) -> list[Evidence]:
         """
         Executes the research plan by searching for evidence for each sub-task.
         Now stores evidence in vector database for RAG.
@@ -44,24 +44,24 @@ class ResearchService:
             if "web" in task.sources:
                 print(f"--- Executing Research Sub-Task: {task.query} ---")
                 search_results = self.search_adapter.search(query=task.query)
-                
+
                 for result in search_results:
                     # result is already an Evidence object from TavilySearchAdapter
                     # Just update the tool_call_id to track which task it came from
                     result.tool_call_id = f"tavily:{task.id}"
                     evidence = result
-                    
+
                     # Store in vector database
                     stored = self.vector_store.store_evidence(evidence, collection_name)
                     if stored:
                         print(f"Stored evidence {evidence.id} in vector store")
-                    
+
                     all_evidence.append(evidence)
-        
+
         print(f"Research completed. Stored {len(all_evidence)} pieces of evidence in collection {collection_name}")
         return all_evidence
 
-    def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
+    def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
         """
         Search for existing evidence in the vector store using semantic similarity.
         """

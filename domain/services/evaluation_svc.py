@@ -1,70 +1,76 @@
-import os
 import json
-from typing import List, Dict, Any
-from domain.models.evidence import Evidence
-from domain.models.evaluation import CompletionScore, InformationGap, RefinementQuery, CompletionLevel
+import os
+
 from adapters.saptiva_model.saptiva_client import SaptivaModelAdapter
+from domain.models.evaluation import (
+    CompletionLevel,
+    CompletionScore,
+    InformationGap,
+    RefinementQuery,
+)
+from domain.models.evidence import Evidence
+
 
 class EvaluationService:
     """
     Evaluation Agent implementing Together AI pattern with Saptiva models.
     Assesses research completeness and identifies information gaps.
     """
-    
+
     def __init__(self):
         self.model_adapter = SaptivaModelAdapter()
         # Use Saptiva Cortex for evaluation (analytical tasks)
         self.evaluation_model = os.getenv("SAPTIVA_MODEL_WRITER", "Saptiva Cortex")
-    
-    def evaluate_research_completeness(self, query: str, evidence: List[Evidence]) -> CompletionScore:
+
+    def evaluate_research_completeness(self, query: str, evidence: list[Evidence]) -> CompletionScore:
         """
         Evaluates completeness of research using Together AI pattern.
         """
         prompt = self._build_evaluation_prompt(query, evidence)
-        
+
         response = self.model_adapter.generate(
             model=self.evaluation_model,
             prompt=prompt,
             temperature=0.3,  # Lower temperature for analytical tasks
             max_tokens=1500
         )
-        
+
         return self._parse_evaluation_response(response.get("content", ""))
-    
-    def identify_information_gaps(self, query: str, evidence: List[Evidence]) -> List[InformationGap]:
+
+    def identify_information_gaps(self, query: str, evidence: list[Evidence]) -> list[InformationGap]:
         """
         Identifies specific information gaps in research coverage.
         """
         prompt = self._build_gap_analysis_prompt(query, evidence)
-        
+
         response = self.model_adapter.generate(
             model=self.evaluation_model,
             prompt=prompt,
             temperature=0.2,
             max_tokens=1000
         )
-        
+
         return self._parse_gaps_response(response.get("content", ""))
-    
-    def generate_refinement_queries(self, gaps: List[InformationGap], original_query: str) -> List[RefinementQuery]:
+
+    def generate_refinement_queries(self, gaps: list[InformationGap], original_query: str) -> list[RefinementQuery]:
         """
         Generates targeted follow-up queries to address identified gaps.
         """
         prompt = self._build_refinement_prompt(gaps, original_query)
-        
+
         response = self.model_adapter.generate(
             model=self.evaluation_model,
             prompt=prompt,
             temperature=0.4,  # Slightly higher for creative query generation
             max_tokens=800
         )
-        
+
         return self._parse_refinement_response(response.get("content", ""))
-    
-    def _build_evaluation_prompt(self, query: str, evidence: List[Evidence]) -> str:
+
+    def _build_evaluation_prompt(self, query: str, evidence: list[Evidence]) -> str:
         """Build prompt for research completeness evaluation."""
         evidence_summary = self._summarize_evidence(evidence)
-        
+
         return f"""
 You are an expert research evaluation agent. Analyze the completeness of research conducted for the given query.
 
@@ -97,10 +103,10 @@ Focus on:
 Provide your evaluation:
 """
 
-    def _build_gap_analysis_prompt(self, query: str, evidence: List[Evidence]) -> str:
+    def _build_gap_analysis_prompt(self, query: str, evidence: list[Evidence]) -> str:
         """Build prompt for gap identification."""
         evidence_summary = self._summarize_evidence(evidence)
-        
+
         return f"""
 You are a research gap analysis expert. Identify specific information gaps in the research.
 
@@ -132,13 +138,13 @@ Look for gaps in:
 Provide 3-7 specific gaps:
 """
 
-    def _build_refinement_prompt(self, gaps: List[InformationGap], original_query: str) -> str:
+    def _build_refinement_prompt(self, gaps: list[InformationGap], original_query: str) -> str:
         """Build prompt for generating refinement queries."""
         gaps_text = "\n".join([
             f"- {gap.gap_type}: {gap.description} (Priority: {gap.priority})"
             for gap in gaps
         ])
-        
+
         return f"""
 You are a research query refinement expert. Generate specific follow-up queries to address identified gaps.
 
@@ -166,31 +172,31 @@ Make queries:
 Generate 3-5 refinement queries:
 """
 
-    def _summarize_evidence(self, evidence: List[Evidence]) -> str:
+    def _summarize_evidence(self, evidence: list[Evidence]) -> str:
         """Create a concise summary of evidence for prompts."""
         if not evidence:
             return "No evidence collected yet."
-        
+
         summary_lines = []
         for i, ev in enumerate(evidence[:10], 1):  # Limit to first 10 for prompt efficiency
             summary_lines.append(f"{i}. Source: {ev.source.title} ({ev.source.url})")
             summary_lines.append(f"   Content: {ev.excerpt[:150]}...")
-        
+
         if len(evidence) > 10:
             summary_lines.append(f"... and {len(evidence) - 10} more evidence items")
-        
+
         return "\n".join(summary_lines)
-    
+
     def _parse_evaluation_response(self, response: str) -> CompletionScore:
         """Parse JSON response into CompletionScore object."""
         try:
             # Extract JSON from response
-            json_start = response.find('{')
-            json_end = response.rfind('}') + 1
+            json_start = response.find("{")
+            json_end = response.rfind("}") + 1
             if json_start >= 0 and json_end > json_start:
                 json_text = response[json_start:json_end]
                 data = json.loads(json_text)
-                
+
                 return CompletionScore(
                     overall_score=data.get("overall_score", 0.5),
                     completion_level=CompletionLevel(data.get("completion_level", "partial")),
@@ -201,7 +207,7 @@ Generate 3-5 refinement queries:
                 )
         except Exception as e:
             print(f"Error parsing evaluation response: {e}")
-        
+
         # Fallback response
         return CompletionScore(
             overall_score=0.5,
@@ -211,17 +217,17 @@ Generate 3-5 refinement queries:
             confidence=0.5,
             reasoning="Could not parse evaluation response."
         )
-    
-    def _parse_gaps_response(self, response: str) -> List[InformationGap]:
+
+    def _parse_gaps_response(self, response: str) -> list[InformationGap]:
         """Parse JSON response into InformationGap objects."""
         try:
             # Extract JSON from response
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 json_text = response[json_start:json_end]
                 data = json.loads(json_text)
-                
+
                 gaps = []
                 for gap_data in data:
                     gaps.append(InformationGap(
@@ -233,19 +239,19 @@ Generate 3-5 refinement queries:
                 return gaps
         except Exception as e:
             print(f"Error parsing gaps response: {e}")
-        
+
         return []
-    
-    def _parse_refinement_response(self, response: str) -> List[RefinementQuery]:
+
+    def _parse_refinement_response(self, response: str) -> list[RefinementQuery]:
         """Parse JSON response into RefinementQuery objects."""
         try:
             # Extract JSON from response
-            json_start = response.find('[')
-            json_end = response.rfind(']') + 1
+            json_start = response.find("[")
+            json_end = response.rfind("]") + 1
             if json_start >= 0 and json_end > json_start:
                 json_text = response[json_start:json_end]
                 data = json.loads(json_text)
-                
+
                 queries = []
                 for query_data in data:
                     queries.append(RefinementQuery(
@@ -257,5 +263,5 @@ Generate 3-5 refinement queries:
                 return queries
         except Exception as e:
             print(f"Error parsing refinement response: {e}")
-        
+
         return []

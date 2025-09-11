@@ -47,8 +47,11 @@ jobs:
         TAVILY_API_KEY: "mock_key_for_testing"
         VECTOR_BACKEND: "none"
         ENVIRONMENT: "test"
+        SAPTIVA_CONNECT_TIMEOUT: "15"
+        SAPTIVA_READ_TIMEOUT: "90"
+        WEAVIATE_HOST: "http://localhost:8080"
       run: |
-        pytest tests/ -v --cov=domain --cov=adapters --cov=apps --cov-report=xml --cov-report=html
+        pytest tests/unit/ -v --cov=domain --cov=adapters --cov=apps --cov-report=xml --cov-report=html --cov-fail-under=25
         
     - name: 📊 Upload coverage to Codecov
       uses: codecov/codecov-action@v3
