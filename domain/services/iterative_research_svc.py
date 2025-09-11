@@ -11,6 +11,10 @@ from domain.services.research_svc import ResearchService
 from domain.services.evaluation_svc import EvaluationService
 from domain.services.writer_svc import WriterService
 
+# Telemetry imports
+from adapters.telemetry.tracing import trace_async_operation, trace_operation, record_research_metrics
+from adapters.telemetry.events import get_event_logger, EventType, EventContext
+
 @dataclass
 class ResearchIteration:
     """Represents one iteration of the research process"""
@@ -55,6 +59,7 @@ class IterativeResearchOrchestrator:
         self.evaluator = EvaluationService()
         self.writer = WriterService()
     
+    @trace_async_operation("deep_research.execute", {"research_type": "iterative"})
     async def execute_deep_research(self, query: str) -> DeepResearchResult:
         """
         Execute iterative deep research following Together AI pattern.
@@ -63,15 +68,40 @@ class IterativeResearchOrchestrator:
         iterations = []
         all_evidence = []
         
+        # Initialize event logging
+        event_logger = get_event_logger()
+        task_id = f"deep_research_{int(start_time.timestamp())}"
+        event_logger.set_task_context(task_id)
+        
+        # Log research start
+        event_logger.log_research_started(task_id, query, {
+            "max_iterations": self.max_iterations,
+            "min_completion_score": self.min_completion_score,
+            "budget": self.budget
+        })
+        
         print(f"🚀 Starting iterative deep research for: '{query}'")
         print(f"📊 Configuration: max_iterations={self.max_iterations}, min_score={self.min_completion_score}")
         
         # Initial research iteration
-        initial_plan = self.planner.create_plan(query)
+        with trace_operation("deep_research.planning", {"query_length": len(query)}) as span:
+            initial_plan = self.planner.create_plan(query)
+            span.set_attribute("plan.subtask_count", len(initial_plan.sub_tasks))
+            
+        event_logger.log_plan_created(task_id, query, len(initial_plan.sub_tasks))
         print(f"📋 Initial plan created with {len(initial_plan.sub_tasks)} sub-tasks")
         
         for iteration_num in range(1, self.max_iterations + 1):
             print(f"\n🔄 === ITERATION {iteration_num} ===")
+            
+            # Log iteration start
+            iteration_queries = []
+            if iteration_num == 1:
+                iteration_queries = [task.query for task in initial_plan.sub_tasks]
+            else:
+                iteration_queries = [rq.query for rq in iterations[-1].refinement_queries or []]
+                
+            event_logger.log_iteration_started(task_id, iteration_num, iteration_queries)
             
             # Execute research for this iteration
             if iteration_num == 1:
@@ -127,7 +157,9 @@ class IterativeResearchOrchestrator:
         
         # Generate final report
         print(f"\n📝 Generating final report...")
-        final_report = self.writer.write_report(query, all_evidence)
+        with trace_operation("deep_research.report_generation", {"evidence_count": len(all_evidence)}) as span:
+            final_report = self.writer.write_report(query, all_evidence)
+            span.set_attribute("report.length", len(final_report))
         
         end_time = datetime.utcnow()
         execution_time = (end_time - start_time).total_seconds()
@@ -142,6 +174,14 @@ class IterativeResearchOrchestrator:
             completion_level=iterations[-1].completion_score.completion_level,
             research_quality_score=iterations[-1].completion_score.overall_score,
             execution_time_seconds=execution_time
+        )
+        
+        # Log research completion with metrics
+        event_logger.log_research_completed(
+            task_id, 
+            len(all_evidence), 
+            result.research_quality_score, 
+            execution_time
         )
         
         print(f"\n🎉 Deep research completed!")
