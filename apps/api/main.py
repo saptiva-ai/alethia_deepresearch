@@ -8,6 +8,13 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Initialize observability early
+from adapters.telemetry.tracing import setup_telemetry
+from adapters.telemetry.events import get_event_logger
+
+# Setup telemetry
+telemetry_manager = setup_telemetry()
+
 # Domain Services
 from domain.services.planner_svc import PlannerService
 from domain.services.research_svc import ResearchService
@@ -17,8 +24,11 @@ from domain.services.iterative_research_svc import IterativeResearchOrchestrator
 app = FastAPI(
     title="Aletheia Deep Research API",
     description="API para análisis e investigación profunda.",
-    version="0.1.0",
+    version="0.2.0",
 )
+
+# Instrument FastAPI with OpenTelemetry
+telemetry_manager.instrument_fastapi(app)
 
 # --- Data Models ---
 

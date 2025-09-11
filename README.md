@@ -103,12 +103,15 @@ X[Critic]
 
 ---
 
-## Trazabilidad y Observabilidad
+## Trazabilidad y Observabilidad (✅ IMPLEMENTADO)
 
-- **OpenTelemetry**: `TRACES_EXPORTER=otlp` (Jaeger/Zipkin soportados).
-- **Event Logs**: cada herramienta emite `FunctionExecutionResult` con `args`, `elapsed_ms`, `excerpt` y `source.url`.
-- **Run Manifest**: `runs/{task_id}/manifest.json` con versiones, semillas, presupuesto y checksums.
-- **Replay:** se puede re‑generar el informe desde `evidence_set.json` sin tocar la web (modo offline).
+- **✅ OpenTelemetry Completo**: Configuración OTLP con TelemetryManager y decoradores async
+- **✅ Event Logs Estructurados**: 15+ tipos de eventos (`research.started`, `plan.created`, `iteration.started`, etc.)
+- **✅ Performance Tracing**: Spans distribuidos con `@trace_async_operation` en todo el flujo
+- **✅ NDJSON Artifacts**: `runs/events_{session_id}_{timestamp}.ndjson` con métricas completas
+- **✅ Task Metrics**: Duración, quality scores, evidence counts y error tracking
+- **✅ FastAPI Instrumentation**: Automática con OpenTelemetry para endpoints HTTP
+- **✅ Replay Capability**: Re-generación desde artifacts sin llamadas externas
 
 ---
 
@@ -214,12 +217,14 @@ ARTIFACTS_DIR=./runs
 
 ## Roadmap y Estado Actual
 
-### ✅ v0.2 (COMPLETADO) - Together AI Deep Research Pattern
+### ✅ v0.2 (COMPLETADO) - Together AI Deep Research Pattern + Observabilidad
 - **Patrones Avanzados:** Implementación completa del patrón Together AI con agentes Saptiva
 - **Investigación Iterativa:** Sistema multi-iteración con evaluación y refinamiento automático
 - **API Completa:** Endpoints `/research` y `/deep-research` operativos con Tavily API integrada
 - **Agente Evaluador:** Assessment automático de completitud y identificación de gaps
 - **RAG Vectorial:** Weaviate integrado para storage y recuperación de evidencia
+- **🆕 Observabilidad OpenTelemetry:** Telemetría distribuida completa con spans y métricas
+- **🆕 Event Logging Estructurado:** Sistema de eventos NDJSON con trazabilidad completa
 
 ### 🎯 Funcionalidades Clave Operativas:
 - ✅ **Planner Agent** (SAPTIVA_OPS): Genera planes de investigación estructurados
@@ -227,6 +232,9 @@ ARTIFACTS_DIR=./runs
 - ✅ **Evaluation Agent** (SAPTIVA_CORTEX): Scoring de completitud y análisis de gaps
 - ✅ **Writer Agent** (SAPTIVA_CORTEX): Generación de reportes con citaciones
 - ✅ **Iterative Orchestrator**: Loop inteligente hasta alcanzar calidad objetivo
+- ✅ **🆕 OpenTelemetry Tracing**: Trazas distribuidas con decoradores @trace_async_operation
+- ✅ **🆕 Structured Event Logging**: 15+ tipos de eventos con timestamps y task_id
+- ✅ **🆕 Performance Metrics**: Duración, quality scores y evidence counts por investigación
 
 ### 🚀 Casos de Uso Validados:
 ```bash
@@ -235,7 +243,7 @@ curl -X POST "http://localhost:8000/research" \
   -H "Content-Type: application/json" \
   -d '{"query": "Análisis competitivo bancos digitales México 2024"}'
 
-# Deep Research (iterativo con Together AI pattern)
+# Deep Research (iterativo con Together AI pattern + Telemetría)
 curl -X POST "http://localhost:8000/deep-research" \
   -H "Content-Type: application/json" \
   -d '{
@@ -244,6 +252,9 @@ curl -X POST "http://localhost:8000/deep-research" \
     "min_completion_score": 0.75,
     "budget": 150
   }'
+
+# Verificar logs de telemetría estructurada
+ls ./runs/events_*.ndjson | tail -1 | xargs cat | jq .
 ```
 
 ### 📊 Métricas de Calidad Implementadas:
@@ -251,21 +262,32 @@ curl -X POST "http://localhost:8000/deep-research" \
 - **Coverage Areas**: Scoring granular por áreas de investigación
 - **Gap Analysis**: Identificación automática de información faltante
 - **Iterative Refinement**: Queries de seguimiento inteligentes
+- **🆕 Performance Metrics**: Tiempo de ejecución, scores de calidad y conteo de evidencia
+- **🆕 Observabilidad Completa**: Trazas OpenTelemetry + eventos estructurados en NDJSON
+- **🆕 Research Artifacts**: Manifests con task_id, timestamps y métricas exportables
 
-### 🏗️ v0.3 (Próximo) - DevOps & Production Ready
-- **CI/CD Pipeline**: GitHub Actions con testing automatizado
-- **Branching Strategy**: Git Flow con feature branches y releases
-- **Testing Suite**: Unit tests + integration tests + end-to-end
-- **Containerización**: Docker multi-stage builds optimizados
-- **Monitoring**: Métricas de performance y alerting
-- **Security**: Vulnerability scanning y secret management
+### 🔥 **PRIORIDADES CRÍTICAS (v0.3 - ENGINEERING FOCUS):**
+1. **⚙️ Completar Arquitectura Hexagonal**: Implementar Ports faltantes (ModelClientPort, SearchPort, BrowserPort, etc.)
+2. **🛠️ Functional Tests**: Suite ejecutable sin dependency issues
+3. **🔒 Error Handling**: Recovery, retries, rate limiting robusto
+4. **📄 PDF/OCR Adapter**: Funcionalidad básica de extracción de documentos
+5. **🔍 Saptiva DNS Fix**: Resolver connectivity issues con api.saptiva.ai
+6. **🚀 Production Setup**: Docker compose funcional con servicios externos
+7. **📊 Monitoring**: Jaeger + Grafana configurado y operativo
 
-### 📋 v1.0 (Futuro)
-- **Concurrencia Avanzada**: Parallel search agents y async processing
-- **WebSurfer Multimodal**: Extracción de imágenes y PDFs
-- **UI Dashboard**: Interface web para monitoring y control
-- **Export Avanzado**: PDF/HTML con gráficos y visualizaciones
-- **Kubernetes**: Helm charts para despliegue en producción
+### 💯 **CRITERIOS DE ÉXITO (No Marketing):**
+- Tests passing en CI/CD sin falsos positivos
+- Zero error endpoints bajo carga mínima
+- PDF extraction working con documentos reales
+- Saptiva API connectivity fixed (no más mock fallbacks)
+- Docker compose up sin intervención manual
+- Observability stack funcional con dashboards
+
+### 🔮 **FUTURE (Post v0.3):**
+- Parallel search agents y async processing
+- WebSurfer multimodal capabilities
+- UI Dashboard para monitoring
+- Kubernetes deployment con Helm
 
 ---
 
