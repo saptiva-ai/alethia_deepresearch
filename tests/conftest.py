@@ -91,13 +91,13 @@ def sample_research_plan():
 @pytest.fixture
 def sample_evidence_list():
     """Sample evidence list for testing."""
-    from domain.models.evidence import Evidence, SourceMetadata
+    from domain.models.evidence import Evidence, EvidenceSource
     from datetime import datetime
     
     return [
         Evidence(
             id="evidence_1",
-            source=SourceMetadata(
+            source=EvidenceSource(
                 url="https://example.com/1",
                 title="Test Source 1",
                 fetched_at=datetime.utcnow()
@@ -110,7 +110,7 @@ def sample_evidence_list():
         ),
         Evidence(
             id="evidence_2",
-            source=SourceMetadata(
+            source=EvidenceSource(
                 url="https://example.com/2", 
                 title="Test Source 2",
                 fetched_at=datetime.utcnow()

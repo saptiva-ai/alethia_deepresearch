@@ -1,6 +1,5 @@
 import os
 import weaviate
-import weaviate.classes as wvc
 from typing import List, Dict, Any, Optional
 import hashlib
 import json
@@ -11,15 +10,15 @@ from domain.models.evidence import Evidence, EvidenceSource
 
 
 class WeaviateVectorAdapter(VectorStorePort):
-    """Weaviate implementation of VectorStorePort."""
+    """Weaviate implementation of VectorStorePort using v3 API."""
     
     def __init__(self):
         self.host = os.getenv("WEAVIATE_HOST", "http://localhost:8080")
         self.mock_mode = False
         
         try:
-            # Try to connect to Weaviate
-            self.client = weaviate.connect_to_local(host=self.host.replace("http://", ""))
+            # Try to connect to Weaviate using v3 API
+            self.client = weaviate.Client(url=self.host)
             # Test connection
             if not self.health_check():
                 print(f"Warning: Could not connect to Weaviate at {self.host}. Using mock mode.")
@@ -42,12 +41,9 @@ class WeaviateVectorAdapter(VectorStorePort):
             # Create collection if it doesn't exist
             self.create_collection(collection_name)
             
-            # Get collection
-            collection = self.client.collections.get(collection_name)
-            
-            # Prepare data object
+            # Prepare data object (using evidence_id instead of id - reserved in Weaviate)
             data_object = {
-                "id": evidence.id,
+                "evidence_id": evidence.id,
                 "excerpt": evidence.excerpt,
                 "source_url": evidence.source.url,
                 "source_title": evidence.source.title,
@@ -55,13 +51,15 @@ class WeaviateVectorAdapter(VectorStorePort):
                 "hash": evidence.hash or "",
                 "tool_call_id": evidence.tool_call_id or "",
                 "score": evidence.score or 0.0,
-                "tags": evidence.tags,
+                "tags": evidence.tags or [],
                 "cit_key": evidence.cit_key or ""
             }
             
             # Insert object with vector (Weaviate will auto-vectorize based on excerpt)
-            collection.data.insert(
-                properties=data_object
+            self.client.data_object.create(
+                data_object=data_object,
+                class_name=collection_name,
+                uuid=evidence.id
             )
             
             print(f"Stored evidence {evidence.id} in Weaviate collection {collection_name}")
@@ -77,35 +75,40 @@ class WeaviateVectorAdapter(VectorStorePort):
             return self._mock_search_similar(query, collection_name, limit)
         
         try:
-            # Get collection
-            collection = self.client.collections.get(collection_name)
-            
-            # Perform semantic search
-            response = collection.query.near_text(
-                query=query,
-                limit=limit,
-                return_metadata=wvc.query.MetadataQuery(score=True)
+            # Perform semantic search using nearText
+            response = (
+                self.client.query
+                .get(collection_name, [
+                    "evidence_id", "excerpt", "source_url", "source_title", 
+                    "fetched_at", "hash", "tool_call_id", "score", "tags", "cit_key"
+                ])
+                .with_near_text({
+                    "concepts": [query]
+                })
+                .with_additional(["score"])
+                .with_limit(limit)
+                .do()
             )
             
             # Convert results to Evidence objects
             results = []
-            for obj in response.objects:
-                props = obj.properties
-                evidence = Evidence(
-                    id=props["id"],
-                    source=EvidenceSource(
-                        url=props["source_url"],
-                        title=props["source_title"],
-                        fetched_at=datetime.fromisoformat(props["fetched_at"])
-                    ),
-                    excerpt=props["excerpt"],
-                    hash=props.get("hash") or None,
-                    tool_call_id=props.get("tool_call_id") or None,
-                    score=obj.metadata.score if obj.metadata.score else props.get("score", 0.0),
-                    tags=props.get("tags", []),
-                    cit_key=props.get("cit_key") or None
-                )
-                results.append(evidence)
+            if "data" in response and "Get" in response["data"] and collection_name in response["data"]["Get"]:
+                for obj in response["data"]["Get"][collection_name]:
+                    evidence = Evidence(
+                        id=obj["evidence_id"],
+                        source=EvidenceSource(
+                            url=obj["source_url"],
+                            title=obj["source_title"],
+                            fetched_at=datetime.fromisoformat(obj["fetched_at"])
+                        ),
+                        excerpt=obj["excerpt"],
+                        hash=obj.get("hash") or None,
+                        tool_call_id=obj.get("tool_call_id") or None,
+                        score=obj.get("_additional", {}).get("score", obj.get("score", 0.0)),
+                        tags=obj.get("tags", []),
+                        cit_key=obj.get("cit_key") or None
+                    )
+                    results.append(evidence)
             
             print(f"Found {len(results)} similar evidence items for query: {query}")
             return results
@@ -122,29 +125,30 @@ class WeaviateVectorAdapter(VectorStorePort):
         
         try:
             # Check if collection already exists
-            if self.client.collections.exists(collection_name):
-                return True
+            schema = self.client.schema.get()
+            for class_obj in schema.get("classes", []):
+                if class_obj["class"] == collection_name:
+                    return True
             
             # Create collection with schema
-            self.client.collections.create(
-                name=collection_name,
-                description=f"Evidence collection for research task: {collection_name}",
-                properties=[
-                    wvc.config.Property(name="id", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="excerpt", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="source_url", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="source_title", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="fetched_at", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="hash", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="tool_call_id", data_type=wvc.config.DataType.TEXT),
-                    wvc.config.Property(name="score", data_type=wvc.config.DataType.NUMBER),
-                    wvc.config.Property(name="tags", data_type=wvc.config.DataType.TEXT_ARRAY),
-                    wvc.config.Property(name="cit_key", data_type=wvc.config.DataType.TEXT),
-                ],
-                # Use default vectorizer (text2vec-transformers or similar)
-                vectorizer_config=wvc.config.Configure.Vectorizer.text2vec_transformers()
-            )
+            class_definition = {
+                "class": collection_name,
+                "description": f"Evidence collection for research task: {collection_name}",
+                "properties": [
+                    {"name": "evidence_id", "dataType": ["text"]},
+                    {"name": "excerpt", "dataType": ["text"]},
+                    {"name": "source_url", "dataType": ["text"]},
+                    {"name": "source_title", "dataType": ["text"]},
+                    {"name": "fetched_at", "dataType": ["text"]},
+                    {"name": "hash", "dataType": ["text"]},
+                    {"name": "tool_call_id", "dataType": ["text"]},
+                    {"name": "score", "dataType": ["number"]},
+                    {"name": "tags", "dataType": ["text[]"]},
+                    {"name": "cit_key", "dataType": ["text"]},
+                ]
+            }
             
+            self.client.schema.create_class(class_definition)
             print(f"Created Weaviate collection: {collection_name}")
             return True
             
@@ -160,9 +164,8 @@ class WeaviateVectorAdapter(VectorStorePort):
             return True
         
         try:
-            if self.client.collections.exists(collection_name):
-                self.client.collections.delete(collection_name)
-                print(f"Deleted Weaviate collection: {collection_name}")
+            self.client.schema.delete_class(collection_name)
+            print(f"Deleted Weaviate collection: {collection_name}")
             return True
             
         except Exception as e:
@@ -189,7 +192,7 @@ class WeaviateVectorAdapter(VectorStorePort):
         
         # Convert evidence to dict for storage
         evidence_dict = {
-            "id": evidence.id,
+            "evidence_id": evidence.id,
             "excerpt": evidence.excerpt,
             "source_url": evidence.source.url,
             "source_title": evidence.source.title,
@@ -217,7 +220,7 @@ class WeaviateVectorAdapter(VectorStorePort):
         for evidence_dict in self.mock_store[collection_name]:
             if query_lower in evidence_dict["excerpt"].lower():
                 evidence = Evidence(
-                    id=evidence_dict["id"],
+                    id=evidence_dict["evidence_id"],
                     source=EvidenceSource(
                         url=evidence_dict["source_url"],
                         title=evidence_dict["source_title"],

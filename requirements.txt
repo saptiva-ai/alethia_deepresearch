@@ -6,6 +6,9 @@ uvicorn[standard]==0.24.0
 httpx==0.25.2
 requests==2.31.0
 
+# Web Scraping
+beautifulsoup4==4.12.2
+
 # Data Models
 pydantic==2.5.0
 pydantic-settings==2.1.0
@@ -15,6 +18,15 @@ tavily-python==0.3.0
 
 # File Processing
 pyyaml==6.0.1
+
+# Document Processing
+PyPDF2==3.0.1
+pdfplumber==0.10.3
+python-docx==1.1.0
+
+# OCR Processing (Optional)
+pytesseract==0.3.10
+Pillow==10.1.0
 
 # Environment Variables
 python-dotenv==1.0.0
@@ -43,4 +55,4 @@ black==23.11.0
 ruff==0.1.6
 mypy==1.7.1
 bandit==1.7.5
-safety==2.3.5
+safety==3.2.8
