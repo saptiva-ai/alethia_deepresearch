@@ -28,9 +28,10 @@ def mock_saptiva_client():
     """Mock Saptiva client for testing."""
     with patch("adapters.saptiva_model.saptiva_client.SaptivaModelAdapter") as mock:
         mock_instance = Mock()
+        # Default response that can be overridden by individual tests
         mock_instance.generate.return_value = {
             "content": "Mock response from Saptiva",
-            "model": "SAPTIVA_OPS",
+            "model": "Saptiva Turbo",
             "usage": {"tokens": 100}
         }
         mock.return_value = mock_instance

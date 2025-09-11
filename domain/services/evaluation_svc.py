@@ -14,7 +14,7 @@ class EvaluationService:
     def __init__(self):
         self.model_adapter = SaptivaModelAdapter()
         # Use Saptiva Cortex for evaluation (analytical tasks)
-        self.evaluation_model = os.getenv("SAPTIVA_MODEL_WRITER", "SAPTIVA_CORTEX")
+        self.evaluation_model = os.getenv("SAPTIVA_MODEL_WRITER", "Saptiva Cortex")
     
     def evaluate_research_completeness(self, query: str, evidence: List[Evidence]) -> CompletionScore:
         """

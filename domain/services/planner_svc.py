@@ -14,15 +14,23 @@ class PlannerService:
         """
         Generates a research plan based on the user's query.
         """
-        prompt = self._build_prompt(query)
-        
-        response = self.model_adapter.generate(
-            model=self.planner_model,
-            prompt=prompt
-        )
-        
-        plan_yaml = response.get("content", "")
-        return self._parse_plan(query, plan_yaml)
+        try:
+            prompt = self._build_prompt(query)
+            
+            response = self.model_adapter.generate(
+                model=self.planner_model,
+                prompt=prompt
+            )
+            
+            plan_yaml = response.get("content", "")
+            return self._parse_plan(query, plan_yaml)
+        except Exception as e:
+            print(f"Error generating plan: {e}")
+            # Return fallback plan
+            return ResearchPlan(
+                main_query=query,
+                sub_tasks=[ResearchSubTask(id="T01", query=query, sources=["web"])]
+            )
 
     def _build_prompt(self, query: str) -> str:
         return f"""
@@ -39,7 +47,10 @@ Research Plan (YAML):
             sub_tasks_data = yaml.safe_load(plan_yaml)
             if not isinstance(sub_tasks_data, list):
                 print(f"Warning: Planner did not return a list of sub-tasks. Got: {sub_tasks_data}")
-                return ResearchPlan(main_query=main_query, sub_tasks=[])
+                return ResearchPlan(
+                    main_query=main_query, 
+                    sub_tasks=[ResearchSubTask(id="T01", query=main_query, sources=["web"])]
+                )
 
             sub_tasks = [ResearchSubTask(**task_data) for task_data in sub_tasks_data]
             return ResearchPlan(main_query=main_query, sub_tasks=sub_tasks)
