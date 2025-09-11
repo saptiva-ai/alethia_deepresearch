@@ -140,6 +140,13 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
 
 # --- API Endpoints ---
 
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint for Docker and monitoring.
+    """
+    return {"status": "healthy", "service": "Aletheia Deep Research API", "version": "0.2.0"}
+
 @app.post("/research", status_code=status.HTTP_202_ACCEPTED, response_model=TaskStatus)
 async def start_research(request: ResearchRequest, background_tasks: BackgroundTasks):
     """
@@ -162,6 +169,17 @@ async def start_research(request: ResearchRequest, background_tasks: BackgroundT
     tasks[task_id] = {"status": "accepted"}
     background_tasks.add_task(run_real_research_pipeline, task_id, request.query)
     return TaskStatus(task_id=task_id, status="accepted", details="Research task has been accepted and is running in the background.")
+
+@app.get("/tasks/{task_id}/status", response_model=TaskStatus)
+async def get_task_status(task_id: str):
+    """
+    Get the current status of a research task.
+    """
+    task = tasks.get(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    
+    return TaskStatus(task_id=task_id, status=task["status"], details=task.get("report", ""))
 
 @app.get("/reports/{task_id}", response_model=Report)
 async def get_report(task_id: str):

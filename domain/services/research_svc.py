@@ -46,17 +46,10 @@ class ResearchService:
                 search_results = self.search_adapter.search(query=task.query)
                 
                 for result in search_results:
-                    # Create evidence object
-                    evidence = Evidence(
-                        id=f"ev_{uuid.uuid4()}",
-                        source=EvidenceSource(
-                            url=result.get("url", ""),
-                            title=result.get("title", ""),
-                        ),
-                        excerpt=result.get("content", ""),
-                        hash=self._generate_hash(result.get("content", "")),
-                        tool_call_id=f"tavily:{task.id}"
-                    )
+                    # result is already an Evidence object from TavilySearchAdapter
+                    # Just update the tool_call_id to track which task it came from
+                    result.tool_call_id = f"tavily:{task.id}"
+                    evidence = result
                     
                     # Store in vector database
                     stored = self.vector_store.store_evidence(evidence, collection_name)
