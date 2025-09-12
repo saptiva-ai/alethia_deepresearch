@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from domain.models.evidence import Evidence
 
@@ -8,7 +8,7 @@ class SearchPort(ABC):
     """Port for web search operations."""
 
     @abstractmethod
-    def search(self, query: str, max_results: int = 10, **kwargs: Any) -> list[Evidence]:
+    def search(self, query: str, max_results: int = 10, **kwargs: Any) -> List[Evidence]:
         """
         Perform a web search and return evidence.
 
@@ -23,7 +23,7 @@ class SearchPort(ABC):
         pass
 
     @abstractmethod
-    def search_news(self, query: str, max_results: int = 10, days: int = 30) -> list[Evidence]:
+    def search_news(self, query: str, max_results: int = 10, days: int = 30) -> List[Evidence]:
         """
         Search for news articles.
 
@@ -38,7 +38,7 @@ class SearchPort(ABC):
         pass
 
     @abstractmethod
-    def search_academic(self, query: str, max_results: int = 10) -> list[Evidence]:
+    def search_academic(self, query: str, max_results: int = 10) -> List[Evidence]:
         """
         Search for academic papers and research.
 
@@ -75,7 +75,7 @@ class SearchPort(ABC):
         pass
 
     @abstractmethod
-    def get_search_quota(self) -> dict[str, Any]:
+    def get_search_quota(self) -> Dict[str, Any]:
         """
         Get current search quota and usage information.
 

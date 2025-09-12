@@ -1,5 +1,6 @@
 import hashlib
 import os
+from typing import List
 
 from adapters.saptiva_model.saptiva_client import SaptivaModelAdapter
 from adapters.weaviate_vector.weaviate_adapter import WeaviateVectorAdapter
@@ -16,7 +17,7 @@ class WriterService:
         # Initialize vector store for RAG
         self.vector_store: VectorStorePort = WeaviateVectorAdapter()
 
-    def write_report(self, query: str, evidence_list: list[Evidence]) -> str:
+    def write_report(self, query: str, evidence_list: List[Evidence]) -> str:
         """
         Generates a markdown report based on the collected evidence.
         Now enhanced with RAG retrieval for additional context.
@@ -38,7 +39,7 @@ class WriterService:
 
         return response.get("content", "# Empty Report")
 
-    def _enhance_with_rag(self, query: str, evidence_list: list[Evidence], collection_name: str) -> list[Evidence]:
+    def _enhance_with_rag(self, query: str, evidence_list: List[Evidence], collection_name: str) -> List[Evidence]:
         """
         Enhance the evidence list with additional context from vector store.
         """
@@ -67,7 +68,7 @@ class WriterService:
         print(f"Enhanced evidence: {len(evidence_list)} original + {len(enhanced_list) - len(evidence_list)} from RAG = {len(enhanced_list)} total")
         return enhanced_list
 
-    def _build_prompt(self, query: str, evidence_list: list[Evidence]) -> str:
+    def _build_prompt(self, query: str, evidence_list: List[Evidence]) -> str:
         evidence_str = "\n\n".join(
             [f"Source: {ev.source.url}\nTitle: {ev.source.title}\nExcerpt: {ev.excerpt}" for ev in evidence_list]
         )

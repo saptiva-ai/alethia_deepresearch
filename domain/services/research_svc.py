@@ -29,7 +29,7 @@ class ResearchService:
         else:
             print("Weaviate not available - using mock vector storage.")
 
-    def execute_plan(self, plan: ResearchPlan) -> list[Evidence]:
+    def execute_plan(self, plan: ResearchPlan) -> List[Evidence]:
         """
         Executes the research plan by searching for evidence for each sub-task.
         Now stores evidence in vector database for RAG.
@@ -154,7 +154,7 @@ class ResearchService:
 
             print(f"📦 Batch storage completed: {stored_count}/{len(evidence_list)} items stored")
 
-    def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
+    def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
         """
         Search for existing evidence in the vector store using semantic similarity.
         """

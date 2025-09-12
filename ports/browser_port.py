@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional
+from typing import Any, List, Optional
 
 from domain.models.evidence import Evidence
 
@@ -62,7 +62,7 @@ class BrowserPort(ABC):
         pass
 
     @abstractmethod
-    def extract_links(self, url: str, filter_pattern: Optional[str] = None) -> list[str]:
+    def extract_links(self, url: str, filter_pattern: Optional[str] = None) -> List[str]:
         """
         Extract links from a web page.
 

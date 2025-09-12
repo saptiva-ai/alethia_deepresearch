@@ -1,5 +1,6 @@
 import json
 import os
+from typing import List
 
 from adapters.saptiva_model.saptiva_client import SaptivaModelAdapter
 from domain.models.evaluation import (
@@ -22,7 +23,7 @@ class EvaluationService:
         # Use Saptiva Cortex for evaluation (analytical tasks)
         self.evaluation_model = os.getenv("SAPTIVA_MODEL_WRITER", "Saptiva Cortex")
 
-    def evaluate_research_completeness(self, query: str, evidence: list[Evidence]) -> CompletionScore:
+    def evaluate_research_completeness(self, query: str, evidence: List[Evidence]) -> CompletionScore:
         """
         Evaluates completeness of research using Together AI pattern.
         """
@@ -37,7 +38,7 @@ class EvaluationService:
 
         return self._parse_evaluation_response(response.get("content", ""))
 
-    def identify_information_gaps(self, query: str, evidence: list[Evidence]) -> list[InformationGap]:
+    def identify_information_gaps(self, query: str, evidence: List[Evidence]) -> List[InformationGap]:
         """
         Identifies specific information gaps in research coverage.
         """
@@ -52,7 +53,7 @@ class EvaluationService:
 
         return self._parse_gaps_response(response.get("content", ""))
 
-    def generate_refinement_queries(self, gaps: list[InformationGap], original_query: str) -> list[RefinementQuery]:
+    def generate_refinement_queries(self, gaps: List[InformationGap], original_query: str) -> List[RefinementQuery]:
         """
         Generates targeted follow-up queries to address identified gaps.
         """
@@ -67,7 +68,7 @@ class EvaluationService:
 
         return self._parse_refinement_response(response.get("content", ""))
 
-    def _build_evaluation_prompt(self, query: str, evidence: list[Evidence]) -> str:
+    def _build_evaluation_prompt(self, query: str, evidence: List[Evidence]) -> str:
         """Build prompt for research completeness evaluation."""
         evidence_summary = self._summarize_evidence(evidence)
 
@@ -103,7 +104,7 @@ Focus on:
 Provide your evaluation:
 """
 
-    def _build_gap_analysis_prompt(self, query: str, evidence: list[Evidence]) -> str:
+    def _build_gap_analysis_prompt(self, query: str, evidence: List[Evidence]) -> str:
         """Build prompt for gap identification."""
         evidence_summary = self._summarize_evidence(evidence)
 
@@ -138,7 +139,7 @@ Look for gaps in:
 Provide 3-7 specific gaps:
 """
 
-    def _build_refinement_prompt(self, gaps: list[InformationGap], original_query: str) -> str:
+    def _build_refinement_prompt(self, gaps: List[InformationGap], original_query: str) -> str:
         """Build prompt for generating refinement queries."""
         gaps_text = "\n".join([
             f"- {gap.gap_type}: {gap.description} (Priority: {gap.priority})"
@@ -172,7 +173,7 @@ Make queries:
 Generate 3-5 refinement queries:
 """
 
-    def _summarize_evidence(self, evidence: list[Evidence]) -> str:
+    def _summarize_evidence(self, evidence: List[Evidence]) -> str:
         """Create a concise summary of evidence for prompts."""
         if not evidence:
             return "No evidence collected yet."
@@ -218,7 +219,7 @@ Generate 3-5 refinement queries:
             reasoning="Could not parse evaluation response."
         )
 
-    def _parse_gaps_response(self, response: str) -> list[InformationGap]:
+    def _parse_gaps_response(self, response: str) -> List[InformationGap]:
         """Parse JSON response into InformationGap objects."""
         try:
             # Extract JSON from response
@@ -242,7 +243,7 @@ Generate 3-5 refinement queries:
 
         return []
 
-    def _parse_refinement_response(self, response: str) -> list[RefinementQuery]:
+    def _parse_refinement_response(self, response: str) -> List[RefinementQuery]:
         """Parse JSON response into RefinementQuery objects."""
         try:
             # Extract JSON from response

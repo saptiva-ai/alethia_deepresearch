@@ -1,7 +1,7 @@
 from datetime import datetime
 import hashlib
 import os
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from tavily import TavilyClient
 
@@ -16,7 +16,7 @@ class TavilySearchAdapter(SearchPort):
             raise ValueError("TAVILY_API_KEY environment variable not set or is a placeholder.")
         self.client = TavilyClient(api_key=self.api_key)
 
-    def search(self, query: str, max_results: int = 10, **kwargs: Any) -> list[Evidence]:
+    def search(self, query: str, max_results: int = 10, **kwargs: Any) -> List[Evidence]:
         """
         Perform a web search and return evidence.
         """
@@ -29,7 +29,7 @@ class TavilySearchAdapter(SearchPort):
             print(f"Error during Tavily search: {e}")
             return []
 
-    def search_news(self, query: str, max_results: int = 10, days: int = 30) -> list[Evidence]:
+    def search_news(self, query: str, max_results: int = 10, days: int = 30) -> List[Evidence]:
         """
         Search for news articles.
         """
@@ -47,7 +47,7 @@ class TavilySearchAdapter(SearchPort):
             print(f"Error during Tavily news search: {e}")
             return []
 
-    def search_academic(self, query: str, max_results: int = 10) -> list[Evidence]:
+    def search_academic(self, query: str, max_results: int = 10) -> List[Evidence]:
         """
         Search for academic papers and research.
         """
@@ -79,7 +79,7 @@ class TavilySearchAdapter(SearchPort):
         except Exception:
             return False
 
-    def get_search_quota(self) -> dict[str, Any]:
+    def get_search_quota(self) -> Dict[str, Any]:
         """
         Get current search quota and usage information.
         """
@@ -93,7 +93,7 @@ class TavilySearchAdapter(SearchPort):
         except Exception:
             return {"error": "Unable to retrieve quota information"}
 
-    def _convert_to_evidence(self, results: list[dict], query: str) -> list[Evidence]:
+    def _convert_to_evidence(self, results: List[dict], query: str) -> List[Evidence]:
         """
         Convert Tavily search results to Evidence objects.
         """

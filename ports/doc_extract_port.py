@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from domain.models.evidence import Evidence
 
@@ -48,7 +48,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def extract_evidence_from_document(self, file_path: Union[str, Path], context: str = "") -> list[Evidence]:
+    def extract_evidence_from_document(self, file_path: Union[str, Path], context: str = "") -> List[Evidence]:
         """
         Extract structured evidence from a document.
 
@@ -62,7 +62,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def extract_metadata(self, file_path: Union[str, Path]) -> dict[str, Any]:
+    def extract_metadata(self, file_path: Union[str, Path]) -> Dict[str, Any]:
         """
         Extract metadata from a document.
 
@@ -89,7 +89,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def split_document(self, file_path: Union[str, Path], chunk_size: int = 1000) -> list[str]:
+    def split_document(self, file_path: Union[str, Path], chunk_size: int = 1000) -> List[str]:
         """
         Split a document into chunks for processing.
 
@@ -103,7 +103,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def supported_formats(self) -> list[str]:
+    def supported_formats(self) -> List[str]:
         """
         Get list of supported document formats.
 

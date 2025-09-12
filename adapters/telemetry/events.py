@@ -9,7 +9,7 @@ import json
 import logging
 import os
 import time
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 import uuid
 
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ class ResearchEvent:
     session_id: Optional[str] = None
 
     # Event payload
-    data: dict[str, Any] = None
+    data: Dict[str, Any] = None
 
     # Performance metrics
     duration_ms: Optional[float] = None
@@ -77,7 +77,7 @@ class ResearchEvent:
         if self.event_id is None:
             self.event_id = str(uuid.uuid4())
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert event to dictionary for serialization."""
         result = asdict(self)
         result["timestamp"] = self.timestamp.isoformat()
@@ -93,7 +93,7 @@ class EventLogger:
     """Logger for structured research events."""
 
     def __init__(self):
-        self.events: list[ResearchEvent] = []
+        self.events: List[ResearchEvent] = []
         self.current_task_id: Optional[str] = None
         self.session_id = str(uuid.uuid4())
         self._setup_file_logging()
@@ -115,7 +115,7 @@ class EventLogger:
 
     def log_event(self,
                   event_type: EventType,
-                  data: Optional[dict[str, Any]] = None,
+                  data: Optional[Dict[str, Any]] = None,
                   duration_ms: Optional[float] = None,
                   error: Optional[str] = None,
                   error_type: Optional[str] = None,
@@ -154,7 +154,7 @@ class EventLogger:
         except Exception as e:
             logger.error(f"Failed to write event to file: {e}")
 
-    def log_research_started(self, task_id: str, query: str, config: dict[str, Any]):
+    def log_research_started(self, task_id: str, query: str, config: Dict[str, Any]):
         """Log research process start."""
         return self.log_event(
             EventType.RESEARCH_STARTED,
@@ -234,7 +234,7 @@ class EventLogger:
             task_id=task_id
         )
 
-    def log_iteration_started(self, task_id: str, iteration: int, queries: list[str]):
+    def log_iteration_started(self, task_id: str, iteration: int, queries: List[str]):
         """Log iteration start."""
         return self.log_event(
             EventType.ITERATION_STARTED,
@@ -265,7 +265,7 @@ class EventLogger:
             task_id=task_id
         )
 
-    def log_api_request(self, endpoint: str, method: str, params: dict[str, Any]):
+    def log_api_request(self, endpoint: str, method: str, params: Dict[str, Any]):
         """Log API request."""
         return self.log_event(
             EventType.API_REQUEST_RECEIVED,
@@ -276,7 +276,7 @@ class EventLogger:
             }
         )
 
-    def get_events_for_task(self, task_id: str) -> list[ResearchEvent]:
+    def get_events_for_task(self, task_id: str) -> List[ResearchEvent]:
         """Get all events for a specific task."""
         return [event for event in self.events if event.task_id == task_id]
 
@@ -288,7 +288,7 @@ class EventLogger:
 
         return "\n".join(event.to_json() for event in events_to_export)
 
-    def get_task_metrics(self, task_id: str) -> dict[str, Any]:
+    def get_task_metrics(self, task_id: str) -> Dict[str, Any]:
         """Get performance metrics for a task."""
         task_events = self.get_events_for_task(task_id)
 
@@ -323,7 +323,7 @@ def get_event_logger() -> EventLogger:
     return event_logger
 
 
-def log_research_event(event_type: EventType, data: dict[str, Any],
+def log_research_event(event_type: EventType, data: Dict[str, Any],
                       task_id: Optional[str] = None, duration_ms: Optional[float] = None):
     """Convenience function to log events."""
     return event_logger.log_event(event_type, data, duration_ms, task_id=task_id)
@@ -332,7 +332,7 @@ def log_research_event(event_type: EventType, data: dict[str, Any],
 class EventContext:
     """Context manager for tracking operation duration and logging events."""
 
-    def __init__(self, event_type: EventType, task_id: str, data: Optional[dict[str, Any]] = None):
+    def __init__(self, event_type: EventType, task_id: str, data: Optional[Dict[str, Any]] = None):
         self.event_type = event_type
         self.task_id = task_id
         self.data = data or {}

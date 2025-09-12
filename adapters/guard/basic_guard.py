@@ -1,6 +1,6 @@
 import logging
 import re
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 import urllib.parse
 
 from ports.guard_port import GuardAction, GuardPort, GuardResult
@@ -153,7 +153,7 @@ class BasicGuardAdapter(GuardPort):
                 reason=f"Could not parse URL: {e}"
             )
 
-    def filter_content(self, content: str, filters: list[str]) -> str:
+    def filter_content(self, content: str, filters: List[str]) -> str:
         """Apply content filters to text."""
         filtered_content = content
 
@@ -163,7 +163,7 @@ class BasicGuardAdapter(GuardPort):
 
         return filtered_content
 
-    def redact_pii(self, content: str, pii_types: Optional[list[str]] = None) -> str:
+    def redact_pii(self, content: str, pii_types: Optional[List[str]] = None) -> str:
         """Redact PII from content."""
         redacted_content = content
 
@@ -200,7 +200,7 @@ class BasicGuardAdapter(GuardPort):
         # In a production system, you might want to implement an allowlist
         return True
 
-    def get_policy_violations(self, content: str) -> list[dict[str, Any]]:
+    def get_policy_violations(self, content: str) -> List[Dict[str, Any]]:
         """Get detailed policy violations found in content."""
         violations = []
 

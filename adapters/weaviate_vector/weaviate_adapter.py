@@ -1,5 +1,6 @@
 from datetime import datetime
 import os
+from typing import List
 
 import weaviate
 
@@ -28,7 +29,7 @@ class WeaviateVectorAdapter(VectorStorePort):
             self.client = None
 
         # Mock storage for when Weaviate is not available
-        self.mock_store: dict[str, list[dict]] = {}
+        self.mock_store: Dict[str, List[dict]] = {}
 
     def store_evidence(self, evidence: Evidence, collection_name: str = "default") -> bool:
         """Store evidence in Weaviate or mock storage."""
@@ -67,7 +68,7 @@ class WeaviateVectorAdapter(VectorStorePort):
             print(f"Error storing evidence in Weaviate: {e}")
             return False
 
-    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
+    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
         """Search for similar evidence using semantic search."""
         if self.mock_mode:
             return self._mock_search_similar(query, collection_name, limit)
@@ -206,7 +207,7 @@ class WeaviateVectorAdapter(VectorStorePort):
         print(f"[MOCK] Stored evidence {evidence.id} in collection {collection_name}")
         return True
 
-    def _mock_search_similar(self, query: str, collection_name: str, limit: int) -> list[Evidence]:
+    def _mock_search_similar(self, query: str, collection_name: str, limit: int) -> List[Evidence]:
         """Mock search for testing without Weaviate."""
         if collection_name not in self.mock_store:
             return []

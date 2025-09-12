@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from functools import wraps
 import logging
 import os
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -132,7 +132,7 @@ def get_tracer() -> trace.Tracer:
 
 
 @contextmanager
-def trace_operation(name: str, attributes: Optional[dict[str, Any]] = None, tracer: Optional[trace.Tracer] = None):
+def trace_operation(name: str, attributes: Optional[Dict[str, Any]] = None, tracer: Optional[trace.Tracer] = None):
     """Context manager for tracing operations."""
     if tracer is None:
         tracer = get_tracer()
@@ -149,7 +149,7 @@ def trace_operation(name: str, attributes: Optional[dict[str, Any]] = None, trac
             raise
 
 
-def trace_async_operation(operation_name: str, attributes: Optional[dict[str, Any]] = None):
+def trace_async_operation(operation_name: str, attributes: Optional[Dict[str, Any]] = None):
     """Decorator for tracing async operations."""
     def decorator(func):
         @wraps(func)
@@ -177,7 +177,7 @@ def trace_async_operation(operation_name: str, attributes: Optional[dict[str, An
     return decorator
 
 
-def trace_sync_operation(operation_name: str, attributes: Optional[dict[str, Any]] = None):
+def trace_sync_operation(operation_name: str, attributes: Optional[Dict[str, Any]] = None):
     """Decorator for tracing sync operations."""
     def decorator(func):
         @wraps(func)
@@ -205,7 +205,7 @@ def trace_sync_operation(operation_name: str, attributes: Optional[dict[str, Any
     return decorator
 
 
-def add_span_attributes(span: trace.Span, attributes: dict[str, Any]) -> None:
+def add_span_attributes(span: trace.Span, attributes: Dict[str, Any]) -> None:
     """Helper to add multiple attributes to a span."""
     for key, value in attributes.items():
         span.set_attribute(key, value)

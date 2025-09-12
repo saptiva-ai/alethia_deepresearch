@@ -6,7 +6,7 @@ from functools import lru_cache
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Load environment variables from .env file
 load_dotenv()
@@ -22,8 +22,66 @@ from domain.services.writer_svc import WriterService
 
 app = FastAPI(
     title="Aletheia Deep Research API",
-    description="API para análisis e investigación profunda.",
-    version="0.2.0",
+    description="""
+    ## 🔍 API para análisis e investigación profunda
+    
+    Esta API proporciona capacidades avanzadas de investigación utilizando:
+    
+    - **Investigación Iterativa**: Búsqueda profunda con múltiples iteraciones
+    - **Procesamiento Paralelo**: Optimizado para alto rendimiento
+    - **Trazabilidad Completa**: Monitoreo y observabilidad con OpenTelemetry
+    - **Múltiples Fuentes**: Integración con Tavily y Saptiva APIs
+    
+    ### 📋 Casos de Uso
+    
+    - Análisis de mercado y competencia
+    - Investigación académica y científica  
+    - Due diligence empresarial
+    - Monitoreo de tendencias
+    
+    ### 🚀 Características
+    
+    - ✅ Auto-escalado en Kubernetes
+    - ✅ CI/CD enterprise-grade
+    - ✅ Seguridad y compliance
+    - ✅ Métricas de calidad
+    """,
+    version="0.7.0",
+    contact={
+        "name": "Aletheia Development Team",
+        "url": "https://github.com/saptiva-ai/alethia_deepresearch",
+        "email": "dev@saptiva.ai"
+    },
+    license_info={
+        "name": "MIT License",
+        "url": "https://opensource.org/licenses/MIT"
+    },
+    openapi_tags=[
+        {
+            "name": "health",
+            "description": "Endpoints de estado y monitoreo del sistema"
+        },
+        {
+            "name": "research", 
+            "description": "Investigación estándar con procesamiento paralelo optimizado"
+        },
+        {
+            "name": "deep-research",
+            "description": "Investigación iterativa profunda usando patrón Together AI"
+        },
+        {
+            "name": "tasks",
+            "description": "Gestión y seguimiento de tareas de investigación"
+        },
+        {
+            "name": "reports",
+            "description": "Generación y recuperación de reportes"
+        },
+        {
+            "name": "observability", 
+            "description": "Trazabilidad y métricas de rendimiento"
+        }
+    ]
 )
 
 telemetry_manager: TelemetryManager
@@ -42,39 +100,94 @@ from typing import Optional
 
 
 class ResearchRequest(BaseModel):
-    query: str
-    scope: Optional[str] = None
-    budget: Optional[float] = None
+    """Solicitud para investigación estándar con procesamiento paralelo optimizado."""
+    query: str = Field(
+        ...,
+        description="Consulta de investigación",
+        example="Análisis del mercado de inteligencia artificial en 2025"
+    )
+    scope: Optional[str] = Field(
+        None,
+        description="Alcance específico de la investigación",
+        example="mercado_latinoamericano"
+    )
+    budget: Optional[float] = Field(
+        None,
+        description="Presupuesto máximo para fuentes de datos",
+        example=50.0,
+        gt=0,
+        le=1000
+    )
 
 class DeepResearchRequest(BaseModel):
-    query: str
-    scope: Optional[str] = None
-    max_iterations: Optional[int] = 3
-    min_completion_score: Optional[float] = 0.75
-    budget: Optional[int] = 100
+    """Solicitud para investigación iterativa profunda usando patrón Together AI."""
+    query: str = Field(
+        ...,
+        description="Consulta principal de investigación profunda",
+        example="Impacto de la regulación AI Act en startups europeas"
+    )
+    scope: Optional[str] = Field(
+        None,
+        description="Alcance específico de la investigación",
+        example="startup_ecosystem_europa"
+    )
+    max_iterations: Optional[int] = Field(
+        3,
+        description="Máximo número de iteraciones de refinamiento",
+        example=5,
+        ge=1,
+        le=10
+    )
+    min_completion_score: Optional[float] = Field(
+        0.75,
+        description="Score mínimo de completitud para finalizar",
+        example=0.85,
+        ge=0.1,
+        le=1.0
+    )
+    budget: Optional[int] = Field(
+        100,
+        description="Presupuesto total para la investigación",
+        example=200,
+        gt=0,
+        le=5000
+    )
 
 class TaskStatus(BaseModel):
-    task_id: str
-    status: str
-    details: Optional[str] = None
+    """Estado de una tarea de investigación."""
+    task_id: str = Field(..., description="Identificador único de la tarea", example="550e8400-e29b-41d4-a716-446655440000")
+    status: str = Field(..., description="Estado actual de la tarea", example="completed")
+    details: Optional[str] = Field(None, description="Detalles adicionales del estado", example="Investigación completada con 15 fuentes")
 
 class Report(BaseModel):
-    status: str
-    report_md: Optional[str] = None
-    sources_bib: Optional[str] = None
-    metrics_json: Optional[str] = None
+    """Reporte de investigación estándar."""
+    status: str = Field(..., description="Estado del reporte", example="completed")
+    report_md: Optional[str] = Field(None, description="Contenido del reporte en Markdown")
+    sources_bib: Optional[str] = Field(None, description="Bibliografía de fuentes consultadas", example="Generated from 15 evidence sources")
+    metrics_json: Optional[str] = Field(None, description="Métricas de calidad en formato JSON")
 
 class DeepResearchReport(BaseModel):
-    status: str
-    report_md: Optional[str] = None
-    sources_bib: Optional[str] = None
-    research_summary: Optional[dict] = None
-    quality_metrics: Optional[dict] = None
+    """Reporte de investigación profunda con métricas de calidad."""
+    status: str = Field(..., description="Estado del reporte", example="completed")
+    report_md: Optional[str] = Field(None, description="Contenido del reporte final en Markdown")
+    sources_bib: Optional[str] = Field(None, description="Bibliografía de fuentes consultadas")
+    research_summary: Optional[dict] = Field(None, description="Resumen estructurado de la investigación")
+    quality_metrics: Optional[dict] = Field(
+        None, 
+        description="Métricas de calidad de la investigación",
+        example={
+            "completion_level": 0.95,
+            "quality_score": 0.88,
+            "evidence_count": 42,
+            "execution_time": 127.3
+        }
+    )
 
 class Traces(BaseModel):
-    manifest_json: str
-    events_ndjson: str
-    otel_export_json: str
+    """Artefactos de trazabilidad y observabilidad."""
+    manifest_json: str = Field(..., description="Manifiesto de la ejecución")
+    events_ndjson: str = Field(..., description="Eventos de trazabilidad en formato NDJSON")  
+    otel_export_json: str = Field(..., description="Exportación de trazas OpenTelemetry")
 
 # --- In-Memory Task Store ---
 tasks = {}
@@ -184,7 +297,32 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
 
 # --- API Endpoints ---
 
-@app.get("/health")
+@app.get(
+    "/health",
+    tags=["health"],
+    summary="Estado del sistema",
+    description="Verifica el estado de salud de la API y la disponibilidad de servicios externos",
+    responses={
+        200: {
+            "description": "Sistema funcionando correctamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "healthy",
+                        "service": "Aletheia Deep Research API",
+                        "version": "0.7.0",
+                        "api_keys": {
+                            "saptiva_available": True,
+                            "tavily_available": True
+                        },
+                        "cached": False,
+                        "timestamp": 1726179600.0
+                    }
+                }
+            }
+        }
+    }
+)
 async def health_check():
     """
     Health check endpoint for Docker and monitoring.
@@ -218,7 +356,37 @@ async def health_check():
         "timestamp": current_time
     }
 
-@app.post("/research", status_code=status.HTTP_202_ACCEPTED, response_model=TaskStatus)
+@app.post(
+    "/research",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=TaskStatus,
+    tags=["research"],
+    summary="Iniciar investigación estándar",
+    description="""
+    Inicia una nueva tarea de investigación con procesamiento paralelo optimizado.
+    
+    - **Procesamiento asíncrono**: La investigación se ejecuta en segundo plano
+    - **Optimización paralela**: Múltiples sub-tareas ejecutadas simultáneamente  
+    - **Múltiples fuentes**: Integración con Tavily y Saptiva APIs
+    - **Alta disponibilidad**: Continúa funcionando aunque algunas APIs no estén disponibles
+    """,
+    responses={
+        202: {
+            "description": "Tarea de investigación aceptada y en ejecución",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "task_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "status": "accepted",
+                        "details": "Research task has been accepted and is running with optimized parallel processing."
+                    }
+                }
+            }
+        },
+        400: {"description": "Parámetros de solicitud inválidos"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
 async def start_research(request: ResearchRequest, background_tasks: BackgroundTasks):
     """
     Starts a new research task with performance optimizations.
@@ -242,7 +410,28 @@ async def start_research(request: ResearchRequest, background_tasks: BackgroundT
         details="Research task has been accepted and is running with optimized parallel processing."
     )
 
-@app.get("/tasks/{task_id}/status", response_model=TaskStatus)
+@app.get(
+    "/tasks/{task_id}/status",
+    response_model=TaskStatus,
+    tags=["tasks"],
+    summary="Consultar estado de tarea",
+    description="Obtiene el estado actual de una tarea de investigación específica",
+    responses={
+        200: {
+            "description": "Estado de la tarea recuperado exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "task_id": "550e8400-e29b-41d4-a716-446655440000",
+                        "status": "completed",
+                        "details": "Research completed with 15 evidence sources"
+                    }
+                }
+            }
+        },
+        404: {"description": "Tarea no encontrada"}
+    }
+)
 async def get_task_status(task_id: str):
     """
     Get the current status of a research task.
@@ -253,7 +442,29 @@ async def get_task_status(task_id: str):
 
     return TaskStatus(task_id=task_id, status=task["status"], details=task.get("report", ""))
 
-@app.get("/reports/{task_id}", response_model=Report)
+@app.get(
+    "/reports/{task_id}",
+    response_model=Report,
+    tags=["reports"],
+    summary="Obtener reporte de investigación",
+    description="Recupera el resultado completo de una tarea de investigación incluyendo el reporte y fuentes",
+    responses={
+        200: {
+            "description": "Reporte recuperado exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "completed",
+                        "report_md": "# Análisis del Mercado de IA en 2025\n\n## Resumen Ejecutivo\n...",
+                        "sources_bib": "Generated from 15 evidence sources",
+                        "metrics_json": "{\"mock_metric\": 1.0}"
+                    }
+                }
+            }
+        },
+        404: {"description": "Reporte no encontrado"}
+    }
+)
 async def get_report(task_id: str):
     """
     Retrieves the status and result of a research task.
@@ -273,7 +484,35 @@ async def get_report(task_id: str):
         return Report(status=task["status"], report_md=task.get("report"))
 
 
-@app.get("/traces/{task_id}", response_model=Traces)
+@app.get(
+    "/traces/{task_id}",
+    response_model=Traces,
+    tags=["observability"],
+    summary="Obtener trazas de observabilidad",
+    description="""
+    Recupera artefactos de trazabilidad y observabilidad para una tarea específica.
+    
+    Incluye:
+    - **Manifiesto**: Configuración y metadatos de la ejecución
+    - **Eventos**: Log de eventos en formato NDJSON para análisis
+    - **OpenTelemetry**: Trazas de rendimiento y monitoreo
+    """,
+    responses={
+        200: {
+            "description": "Trazas recuperadas exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "manifest_json": "{\"version\": \"0.7.0\", \"task_type\": \"research\", \"started_at\": \"2025-09-12T10:00:00Z\"}",
+                        "events_ndjson": "{\"event\": \"task_started\", \"timestamp\": \"2025-09-12T10:00:00Z\"}\n{\"event\": \"plan_created\", \"subtasks\": 5}",
+                        "otel_export_json": "{\"trace_id\": \"abc123\", \"spans\": [{\"name\": \"research_task\", \"duration_ms\": 1250}]}"
+                    }
+                }
+            }
+        },
+        404: {"description": "Tarea no encontrada"}
+    }
+)
 async def get_traces(task_id: str):
     """
     Retrieves traceability and observability artifacts for a task.
@@ -290,7 +529,44 @@ async def get_traces(task_id: str):
 
 # --- Deep Research Endpoints (Together AI Pattern) ---
 
-@app.post("/deep-research", status_code=status.HTTP_202_ACCEPTED, response_model=TaskStatus)
+@app.post(
+    "/deep-research",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=TaskStatus,
+    tags=["deep-research"],
+    summary="Iniciar investigación profunda iterativa",
+    description="""
+    Inicia una investigación profunda usando el patrón Together AI con refinamiento iterativo.
+    
+    ### 🔄 Características de Deep Research:
+    - **Refinamiento iterativo**: Múltiples ciclos de análisis y mejora
+    - **Score de completitud**: Evaluación automática de calidad
+    - **Gap analysis**: Identificación automática de brechas de información
+    - **Control de presupuesto**: Límites configurables de recursos
+    
+    ### 📊 Métricas de Calidad:
+    - Completion level (0.0 - 1.0)
+    - Research quality score 
+    - Evidence count tracking
+    - Execution time monitoring
+    """,
+    responses={
+        202: {
+            "description": "Tarea de investigación profunda aceptada",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "task_id": "deep-550e8400-e29b-41d4-a716-446655440000",
+                        "status": "accepted", 
+                        "details": "Deep research task accepted with parallel processing. Configuration: 5 iterations, 0.85 min score."
+                    }
+                }
+            }
+        },
+        400: {"description": "Parámetros de configuración inválidos"},
+        500: {"description": "Error interno del servidor"}
+    }
+)
 async def start_deep_research(request: DeepResearchRequest, background_tasks: BackgroundTasks):
     """
     Starts a new iterative deep research task using Together AI pattern with performance optimizations.
@@ -314,7 +590,47 @@ async def start_deep_research(request: DeepResearchRequest, background_tasks: Ba
         details=f"Deep research task accepted with parallel processing. Configuration: {request.max_iterations} iterations, {request.min_completion_score} min score."
     )
 
-@app.get("/deep-research/{task_id}", response_model=DeepResearchReport)
+@app.get(
+    "/deep-research/{task_id}",
+    response_model=DeepResearchReport,
+    tags=["deep-research"],
+    summary="Obtener reporte de investigación profunda",
+    description="""
+    Recupera el resultado completo de una investigación profunda incluyendo métricas de calidad.
+    
+    ### 📊 Contenido del Reporte:
+    - **Reporte final**: Documento completo en Markdown
+    - **Resumen de investigación**: Estructura de datos con hallazgos clave
+    - **Métricas de calidad**: Scores de completitud y evidencia
+    - **Bibliografia**: Referencias de todas las fuentes consultadas
+    """,
+    responses={
+        200: {
+            "description": "Reporte de investigación profunda recuperado exitosamente",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "completed",
+                        "report_md": "# Impacto de AI Act en Startups Europeas\n\n## Análisis Profundo\n...",
+                        "sources_bib": "Generated from 42 evidence sources",
+                        "research_summary": {
+                            "iterations_completed": 3,
+                            "gaps_identified": ["regulatory_compliance", "market_impact"],
+                            "key_findings": ["High compliance costs", "Market consolidation likely"]
+                        },
+                        "quality_metrics": {
+                            "completion_level": 0.95,
+                            "quality_score": 0.88,
+                            "evidence_count": 42,
+                            "execution_time": 127.3
+                        }
+                    }
+                }
+            }
+        },
+        404: {"description": "Tarea de investigación profunda no encontrada"}
+    }
+)
 async def get_deep_research_report(task_id: str):
     """
     Retrieves the status and result of a deep research task.

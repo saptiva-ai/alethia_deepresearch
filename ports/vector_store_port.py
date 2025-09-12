@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 
 from domain.models.evidence import Evidence
 
@@ -21,7 +22,7 @@ class VectorStorePort(ABC):
         pass
 
     @abstractmethod
-    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
+    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
         """
         Search for similar evidence based on semantic similarity.
 

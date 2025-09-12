@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from opentelemetry import trace
 
@@ -26,11 +26,11 @@ from domain.services.writer_svc import WriterService
 class ResearchIteration:
     """Represents one iteration of the research process"""
     iteration_number: int
-    queries_executed: list[str]
-    evidence_collected: list[Evidence]
+    queries_executed: List[str]
+    evidence_collected: List[Evidence]
     completion_score: Optional[CompletionScore] = None
-    gaps_identified: list[InformationGap] = None
-    refinement_queries: list[RefinementQuery] = None
+    gaps_identified: List[InformationGap] = None
+    refinement_queries: List[RefinementQuery] = None
     timestamp: datetime = None
 
     def __post_init__(self):
@@ -41,8 +41,8 @@ class ResearchIteration:
 class DeepResearchResult:
     """Complete result of iterative deep research process"""
     original_query: str
-    iterations: list[ResearchIteration]
-    final_evidence: list[Evidence]
+    iterations: List[ResearchIteration]
+    final_evidence: List[Evidence]
     final_report: str
     total_evidence_count: int
     completion_level: CompletionLevel
@@ -197,7 +197,7 @@ class IterativeResearchOrchestrator:
 
         return result
 
-    async def _execute_refinement_queries(self, refinement_queries: list[RefinementQuery]) -> list[Evidence]:
+    async def _execute_refinement_queries(self, refinement_queries: List[RefinementQuery]) -> List[Evidence]:
         """Execute refinement queries to address identified gaps (sequential version)."""
         if not refinement_queries:
             return []
@@ -221,7 +221,7 @@ class IterativeResearchOrchestrator:
         # Execute refinement research
         return self.researcher.execute_plan(refinement_plan)
 
-    async def _execute_refinement_queries_parallel(self, refinement_queries: list[RefinementQuery]) -> list[Evidence]:
+    async def _execute_refinement_queries_parallel(self, refinement_queries: List[RefinementQuery]) -> List[Evidence]:
         """Execute refinement queries to address identified gaps with parallel processing."""
         if not refinement_queries:
             return []
@@ -247,7 +247,7 @@ class IterativeResearchOrchestrator:
         # Execute refinement research with parallel processing
         return await self.researcher.execute_plan_parallel(refinement_plan)
 
-    def get_research_summary(self, result: DeepResearchResult) -> dict[str, Any]:
+    def get_research_summary(self, result: DeepResearchResult) -> Dict[str, Any]:
         """Generate a summary of the research process for API responses."""
         return {
             "query": result.original_query,

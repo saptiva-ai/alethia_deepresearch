@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Dict, List
 
 from pydantic import BaseModel
 
@@ -21,8 +22,8 @@ class CompletionScore(BaseModel):
     """Evaluation of research completeness using Together AI scoring approach"""
     overall_score: float  # 0.0 - 1.0
     completion_level: CompletionLevel
-    coverage_areas: dict  # {"competitors": 0.8, "market_size": 0.6, "regulations": 0.9}
-    identified_gaps: list[InformationGap]
+    coverage_areas: Dict[str, float]  # {"competitors": 0.8, "market_size": 0.6, "regulations": 0.9}
+    identified_gaps: List[InformationGap]
     confidence: float  # 0.0 - 1.0, confidence in the evaluation
     reasoning: str
 
@@ -31,4 +32,4 @@ class RefinementQuery(BaseModel):
     query: str
     gap_addressed: str  # which gap this query targets
     priority: int
-    expected_sources: list[str]  # ["web", "academic", "financial_reports"]
+    expected_sources: List[str]  # ["web", "academic", "financial_reports"]

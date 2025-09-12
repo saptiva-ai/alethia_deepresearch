@@ -2,7 +2,7 @@ from datetime import datetime
 import hashlib
 import logging
 import re
-from typing import Any, Optional
+from typing import Any, List, Optional
 from urllib.parse import urljoin
 
 import requests
@@ -125,7 +125,7 @@ class BasicBrowserAdapter(BrowserPort):
         logger.warning("Screenshot functionality not implemented in basic browser adapter")
         return False
 
-    def extract_links(self, url: str, filter_pattern: Optional[str] = None) -> list[str]:
+    def extract_links(self, url: str, filter_pattern: Optional[str] = None) -> List[str]:
         """Extract links from a web page."""
         if not BS4_AVAILABLE:
             logger.error("BeautifulSoup4 required for link extraction")

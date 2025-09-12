@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 import hashlib
 import ipaddress
 
@@ -22,20 +22,20 @@ class RateLimitRule:
     requests_per_hour: int
     requests_per_day: int
     burst_limit: Optional[int] = None  # Allow burst of requests
-    whitelist_ips: list[str] = field(default_factory=list)
-    blacklist_ips: list[str] = field(default_factory=list)
+    whitelist_ips: List[str] = field(default_factory=list)
+    blacklist_ips: List[str] = field(default_factory=list)
 
 
 @dataclass
 class SecurityPolicy:
     """Security policy configuration."""
     max_request_size: int = 10 * 1024 * 1024  # 10MB
-    allowed_origins: list[str] = field(default_factory=lambda: ["*"])
+    allowed_origins: List[str] = field(default_factory=lambda: ["*"])
     require_api_key: bool = False
     api_key_header: str = "X-API-Key"
     block_suspicious_queries: bool = True
     max_query_length: int = 1000
-    suspicious_patterns: list[str] = field(default_factory=lambda: [
+    suspicious_patterns: List[str] = field(default_factory=lambda: [
         "UNION SELECT", "DROP TABLE", "INSERT INTO", "DELETE FROM",
         "UPDATE SET", "CREATE TABLE", "<script>", "javascript:",
         "eval(", "exec(", "system(", "import os"

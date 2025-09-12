@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import BinaryIO, Optional
+from typing import BinaryIO, Dict, List, Optional
 
 
 class StorageMetadata:
@@ -17,7 +17,7 @@ class StoragePort(ABC):
     """Port for object storage operations (MinIO/S3/FS)."""
 
     @abstractmethod
-    def store_object(self, key: str, data: bytes, metadata: Optional[dict[str, str]] = None) -> bool:
+    def store_object(self, key: str, data: bytes, metadata: Optional[Dict[str, str]] = None) -> bool:
         """
         Store an object.
 
@@ -32,7 +32,7 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
-    def store_file(self, key: str, file_path: Path, metadata: Optional[dict[str, str]] = None) -> bool:
+    def store_file(self, key: str, file_path: Path, metadata: Optional[Dict[str, str]] = None) -> bool:
         """
         Store a file.
 
@@ -99,7 +99,7 @@ class StoragePort(ABC):
         pass
 
     @abstractmethod
-    def list_objects(self, prefix: str = "", limit: int = 1000) -> list[StorageMetadata]:
+    def list_objects(self, prefix: str = "", limit: int = 1000) -> List[StorageMetadata]:
         """
         List objects with optional prefix filter.
 

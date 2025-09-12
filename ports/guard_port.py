@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 
 class GuardAction(Enum):
@@ -75,7 +75,7 @@ class GuardPort(ABC):
         pass
 
     @abstractmethod
-    def filter_content(self, content: str, filters: list[str]) -> str:
+    def filter_content(self, content: str, filters: List[str]) -> str:
         """
         Apply content filters to text.
 
@@ -89,7 +89,7 @@ class GuardPort(ABC):
         pass
 
     @abstractmethod
-    def redact_pii(self, content: str, pii_types: Optional[list[str]] = None) -> str:
+    def redact_pii(self, content: str, pii_types: Optional[List[str]] = None) -> str:
         """
         Redact PII from content.
 
@@ -116,7 +116,7 @@ class GuardPort(ABC):
         pass
 
     @abstractmethod
-    def get_policy_violations(self, content: str) -> list[dict[str, Any]]:
+    def get_policy_violations(self, content: str) -> List[Dict[str, Any]]:
         """
         Get detailed policy violations found in content.
 

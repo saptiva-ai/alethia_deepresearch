@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Dict, List
 
 
 class ModelClientPort(ABC):
     """Port for AI model client operations."""
 
     @abstractmethod
-    def generate(self, model: str, prompt: str, **kwargs: Any) -> dict[str, Any]:
+    def generate(self, model: str, prompt: str, **kwargs: Any) -> Dict[str, Any]:
         """
         Generate a response from an AI model.
 
@@ -21,7 +21,7 @@ class ModelClientPort(ABC):
         pass
 
     @abstractmethod
-    def chat_completion(self, model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
+    def chat_completion(self, model: str, messages: List[Dict[str, str]], **kwargs: Any) -> Dict[str, Any]:
         """
         Generate a chat completion response.
 
@@ -36,7 +36,7 @@ class ModelClientPort(ABC):
         pass
 
     @abstractmethod
-    def list_models(self) -> list[str]:
+    def list_models(self) -> List[str]:
         """
         List available models.
 
@@ -56,7 +56,7 @@ class ModelClientPort(ABC):
         pass
 
     @abstractmethod
-    def get_model_info(self, model: str) -> dict[str, Any]:
+    def get_model_info(self, model: str) -> Dict[str, Any]:
         """
         Get information about a specific model.
 

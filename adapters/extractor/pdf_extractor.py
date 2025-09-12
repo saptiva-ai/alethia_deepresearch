@@ -2,7 +2,7 @@ from datetime import datetime
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 # PDF processing libraries
 try:
@@ -132,7 +132,7 @@ class PDFExtractorAdapter(DocExtractPort):
             logger.error(f"Error extracting text from DOCX {file_path}: {e}")
             return None
 
-    def extract_evidence_from_document(self, file_path: Union[str, Path], context: str = "") -> list[Evidence]:
+    def extract_evidence_from_document(self, file_path: Union[str, Path], context: str = "") -> List[Evidence]:
         """Extract structured evidence from a document."""
         file_path = Path(file_path)
         text_content = None
@@ -185,7 +185,7 @@ class PDFExtractorAdapter(DocExtractPort):
 
         return evidence_list
 
-    def extract_metadata(self, file_path: Union[str, Path]) -> dict[str, Any]:
+    def extract_metadata(self, file_path: Union[str, Path]) -> Dict[str, Any]:
         """Extract metadata from a document."""
         file_path = Path(file_path)
         metadata = {
@@ -216,7 +216,7 @@ class PDFExtractorAdapter(DocExtractPort):
         logger.warning("PDF conversion not implemented in this basic version")
         return False
 
-    def split_document(self, file_path: Union[str, Path], chunk_size: int = 1000) -> list[str]:
+    def split_document(self, file_path: Union[str, Path], chunk_size: int = 1000) -> List[str]:
         """Split a document into chunks for processing."""
         text_content = None
         file_path = Path(file_path)
@@ -235,7 +235,7 @@ class PDFExtractorAdapter(DocExtractPort):
 
         return self.split_document_content(text_content, chunk_size)
 
-    def split_document_content(self, content: str, chunk_size: int = 1000) -> list[str]:
+    def split_document_content(self, content: str, chunk_size: int = 1000) -> List[str]:
         """Split text content into chunks."""
         if not content:
             return []
@@ -258,7 +258,7 @@ class PDFExtractorAdapter(DocExtractPort):
 
         return chunks
 
-    def supported_formats(self) -> list[str]:
+    def supported_formats(self) -> List[str]:
         """Get list of supported document formats."""
         return self.supported_extensions
 

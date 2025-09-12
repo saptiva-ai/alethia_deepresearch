@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any
+from typing import Any, Dict, List
 
 import requests
 
@@ -33,8 +33,8 @@ class SaptivaModelAdapter(ModelClientPort):
         return self.chat_completion(model, messages, **kwargs)
 
     def chat_completion(
-        self, model: str, messages: list[dict[str, str]], **kwargs: Any
-    ) -> dict[str, Any]:
+        self, model: str, messages: List[Dict[str, str]], **kwargs: Any
+    ) -> Dict[str, Any]:
         """Generate a chat completion response."""
         if self.mock_mode:
             return self._get_mock_response(model, str(messages))
@@ -96,11 +96,11 @@ class SaptivaModelAdapter(ModelClientPort):
         except Exception:
             return False
 
-    def list_models(self) -> list[str]:
+    def list_models(self) -> List[str]:
         """List available models."""
         return ["Saptiva Ops", "Saptiva Cortex", "Saptiva Turbo", "Saptiva Legacy", "Saptiva Coder"]
 
-    def get_model_info(self, model: str) -> dict[str, Any]:
+    def get_model_info(self, model: str) -> Dict[str, Any]:
         """Get information about a specific model."""
         model_info = {
             "Saptiva Ops": {"base": "qwen2.5:72b-instruct", "use_case": "planning"},
@@ -111,7 +111,7 @@ class SaptivaModelAdapter(ModelClientPort):
         }
         return model_info.get(model, {"base": "unknown", "use_case": "general"})
 
-    def _get_mock_response(self, model: str, prompt_or_messages: str) -> dict[str, Any]:
+    def _get_mock_response(self, model: str, prompt_or_messages: str) -> Dict[str, Any]:
         """Return a mock response when API is unavailable."""
         if "planner" in model.lower() or "ops" in model.lower():
             return {

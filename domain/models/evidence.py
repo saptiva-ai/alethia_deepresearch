@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,5 +16,5 @@ class Evidence(BaseModel):
     hash: Optional[str] = None
     tool_call_id: Optional[str] = None
     score: Optional[float] = None
-    tags: list[str] = []
+    tags: List[str] = []
     cit_key: Optional[str] = None
