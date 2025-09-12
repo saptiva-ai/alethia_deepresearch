@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Optional
 
+from opentelemetry import trace
+
 from adapters.telemetry.events import get_event_logger
 
 # Telemetry imports
@@ -65,7 +67,7 @@ class IterativeResearchOrchestrator:
         self.writer = WriterService()
 
     @trace_async_operation("deep_research.execute", {"research_type": "iterative"})
-    async def execute_deep_research(self, query: str) -> DeepResearchResult:
+    async def execute_deep_research(self, query: str, tracer: Optional[trace.Tracer] = None) -> DeepResearchResult:
         """
         Execute iterative deep research following Together AI pattern.
         """
@@ -89,7 +91,7 @@ class IterativeResearchOrchestrator:
         print(f"📊 Configuration: max_iterations={self.max_iterations}, min_score={self.min_completion_score}")
 
         # Initial research iteration
-        with trace_operation("deep_research.planning", {"query_length": len(query)}) as span:
+        with trace_operation("deep_research.planning", {"query_length": len(query)}, tracer=tracer) as span:
             initial_plan = self.planner.create_plan(query)
             span.set_attribute("plan.subtask_count", len(initial_plan.sub_tasks))
 
@@ -162,7 +164,7 @@ class IterativeResearchOrchestrator:
 
         # Generate final report
         print("\n📝 Generating final report...")
-        with trace_operation("deep_research.report_generation", {"evidence_count": len(all_evidence)}) as span:
+        with trace_operation("deep_research.report_generation", {"evidence_count": len(all_evidence)}, tracer=tracer) as span:
             final_report = self.writer.write_report(query, all_evidence)
             span.set_attribute("report.length", len(final_report))
 

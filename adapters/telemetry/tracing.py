@@ -21,11 +21,22 @@ logger = logging.getLogger(__name__)
 
 class TelemetryManager:
     """Manages OpenTelemetry configuration and tracing for Aletheia."""
+    _instance = None
 
-    def __init__(self):
-        self.tracer_provider: Optional[TracerProvider] = None
-        self.tracer: Optional[trace.Tracer] = None
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(TelemetryManager, cls).__new__(cls)
+            cls._instance.tracer_provider = None
+            cls._instance.tracer = None
+            cls._instance.initialized = False
+        return cls._instance
+
+    def reset(self):
+        """Resets the singleton instance. For testing purposes only."""
+        self.tracer_provider = None
+        self.tracer = None
         self.initialized = False
+        TelemetryManager._instance = None
 
     def setup_tracing(self) -> None:
         """Initialize OpenTelemetry tracing."""
@@ -121,9 +132,10 @@ def get_tracer() -> trace.Tracer:
 
 
 @contextmanager
-def trace_operation(name: str, attributes: Optional[dict[str, Any]] = None):
+def trace_operation(name: str, attributes: Optional[dict[str, Any]] = None, tracer: Optional[trace.Tracer] = None):
     """Context manager for tracing operations."""
-    tracer = get_tracer()
+    if tracer is None:
+        tracer = get_tracer()
     with tracer.start_as_current_span(name) as span:
         if attributes:
             for key, value in attributes.items():

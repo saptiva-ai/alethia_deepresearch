@@ -12,10 +12,7 @@ from pydantic import BaseModel
 load_dotenv()
 
 # Initialize observability early
-from adapters.telemetry.tracing import setup_telemetry
-
-# Setup telemetry
-telemetry_manager = setup_telemetry()
+from adapters.telemetry.tracing import setup_telemetry, TelemetryManager
 
 # Domain Services
 from domain.services.iterative_research_svc import IterativeResearchOrchestrator
@@ -29,8 +26,15 @@ app = FastAPI(
     version="0.2.0",
 )
 
-# Instrument FastAPI with OpenTelemetry
-telemetry_manager.instrument_fastapi(app)
+telemetry_manager: TelemetryManager
+
+@app.on_event("startup")
+async def startup_event():
+    """Initializes Telemetry."""
+    global telemetry_manager
+    telemetry_manager = setup_telemetry()
+    telemetry_manager.instrument_fastapi(app)
+
 
 # --- Data Models ---
 
@@ -163,7 +167,7 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
         )
 
         # Execute deep research
-        result = await orchestrator.execute_deep_research(request.query)
+        result = await orchestrator.execute_deep_research(request.query, tracer=telemetry_manager.get_tracer())
 
         # Store result
         deep_research_tasks[task_id] = {
