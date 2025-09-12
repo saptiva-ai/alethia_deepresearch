@@ -2,8 +2,8 @@
 Global pytest configuration and fixtures for Aletheia Deep Research tests.
 """
 import asyncio
-from collections.abc import Generator
 import os
+from typing import Generator
 from unittest.mock import Mock, patch
 
 import pytest

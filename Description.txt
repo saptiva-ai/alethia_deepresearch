@@ -1,0 +1,17 @@
+## Descripción
+
+Como usuario quiero usar la herramienta de deep research de saptiva para investigar temas como:
+
+- Análisis de una empresa
+- Análisis macroeconómico de un país
+- Análisis de una industria
+- Benchmark - Lista de competidores
+- Investigación de un tema complejo : como implementar triton en Hardware AMD
+
+CA:
+
+- Se usan los modelos de saptiva
+- Se recibe un reporte que contiene el resultado de investigación
+- Código documentado separando búsqueda, planeación de investigación y síntesis
+- Hay traces de las consultas y tools usadas
+- Se usa Tavily como motor de búsqueda

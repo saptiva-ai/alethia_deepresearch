@@ -1,4 +1,7 @@
+import asyncio
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
+from typing import List
 
 from adapters.tavily_search.tavily_client import TavilySearchAdapter
 from adapters.weaviate_vector.weaviate_adapter import WeaviateVectorAdapter
@@ -60,6 +63,96 @@ class ResearchService:
 
         print(f"Research completed. Stored {len(all_evidence)} pieces of evidence in collection {collection_name}")
         return all_evidence
+
+    async def execute_plan_parallel(self, plan: ResearchPlan) -> List[Evidence]:
+        """
+        Executes the research plan with parallel search processing for improved performance.
+        Uses asyncio and ThreadPoolExecutor to run searches concurrently.
+        """
+        if not self.search_enabled:
+            print("ResearchService search is disabled due to missing API key.")
+            return []
+
+        # Create a collection for this research session
+        collection_name = f"research_{self._generate_collection_id(plan.main_query)}"
+        self.vector_store.create_collection(collection_name)
+
+        # Filter tasks that need web search
+        web_tasks = [task for task in plan.sub_tasks if "web" in task.sources]
+        
+        if not web_tasks:
+            print("No web search tasks found in plan")
+            return []
+
+        print(f"🚀 Executing {len(web_tasks)} research tasks in parallel...")
+
+        # Execute searches in parallel
+        with ThreadPoolExecutor(max_workers=min(len(web_tasks), 5)) as executor:
+            # Submit all search tasks concurrently
+            search_futures = [
+                executor.submit(self._execute_single_search_task, task)
+                for task in web_tasks
+            ]
+
+            # Collect results as they complete
+            all_evidence = []
+            completed_tasks = 0
+            
+            for future in asyncio.as_completed([
+                asyncio.wrap_future(f) for f in search_futures
+            ]):
+                try:
+                    task_evidence = await future
+                    all_evidence.extend(task_evidence)
+                    completed_tasks += 1
+                    print(f"✅ Task {completed_tasks}/{len(web_tasks)} completed, found {len(task_evidence)} evidence items")
+                except Exception as e:
+                    print(f"❌ Task failed: {e}")
+                    completed_tasks += 1
+
+        # Store all evidence in vector database in parallel
+        await self._store_evidence_batch(all_evidence, collection_name)
+
+        print(f"🎉 Parallel research completed. Stored {len(all_evidence)} pieces of evidence in collection {collection_name}")
+        return all_evidence
+
+    def _execute_single_search_task(self, task) -> List[Evidence]:
+        """Execute a single search task synchronously."""
+        print(f"🔍 Searching: {task.query}")
+        search_results = self.search_adapter.search(query=task.query)
+        
+        evidence_list = []
+        for result in search_results:
+            # Update tool_call_id to track which task it came from
+            result.tool_call_id = f"tavily:{task.id}"
+            evidence_list.append(result)
+        
+        return evidence_list
+
+    async def _store_evidence_batch(self, evidence_list: List[Evidence], collection_name: str):
+        """Store evidence items in vector database using batch processing."""
+        if not evidence_list:
+            return
+
+        # Use ThreadPoolExecutor for parallel storage operations
+        with ThreadPoolExecutor(max_workers=3) as executor:
+            storage_futures = [
+                executor.submit(self.vector_store.store_evidence, evidence, collection_name)
+                for evidence in evidence_list
+            ]
+
+            stored_count = 0
+            for future in asyncio.as_completed([
+                asyncio.wrap_future(f) for f in storage_futures
+            ]):
+                try:
+                    stored = await future
+                    if stored:
+                        stored_count += 1
+                except Exception as e:
+                    print(f"⚠️  Error storing evidence: {e}")
+
+            print(f"📦 Batch storage completed: {stored_count}/{len(evidence_list)} items stored")
 
     def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
         """

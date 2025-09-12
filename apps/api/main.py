@@ -1,5 +1,8 @@
+import asyncio
 import os
+import time
 import uuid
+from functools import lru_cache
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
@@ -73,37 +76,74 @@ class Traces(BaseModel):
 tasks = {}
 deep_research_tasks = {}
 
-# --- Real Research Pipeline ---
-def run_real_research_pipeline(task_id: str, query: str):
+# --- Performance Optimizations ---
+_health_check_cache = {"status": "healthy", "last_check": 0}
+HEALTH_CACHE_TTL = 30  # Cache health status for 30 seconds
+
+@lru_cache(maxsize=128)
+def get_api_keys_status():
+    """Cached API key validation to avoid repeated environment checks."""
+    saptiva_key = os.getenv("SAPTIVA_API_KEY")
+    tavily_key = os.getenv("TAVILY_API_KEY")
+    
+    saptiva_available = saptiva_key and saptiva_key != "pon_tu_api_key_aqui"
+    tavily_available = tavily_key and tavily_key != "pon_tu_api_key_aqui"
+    
+    return {
+        "saptiva_available": saptiva_available,
+        "tavily_available": tavily_available
+    }
+
+# --- Real Research Pipeline (Optimized Async Version) ---
+async def run_real_research_pipeline(task_id: str, query: str):
     """
     Orchestrates the research process: Plan -> Research -> Write.
+    Optimized async version with parallel processing.
     """
     tasks[task_id] = {"status": "running", "report": None}
-    print(f"Starting real research for task {task_id} with query: '{query}'")
+    print(f"🚀 Starting optimized research for task {task_id} with query: '{query}'")
 
     try:
-        # 1. Plan
+        # Initialize services once
         planner = PlannerService()
-        research_plan = planner.create_plan(query)
-        print(f"[{task_id}] Plan created with {len(research_plan.sub_tasks)} sub-tasks.")
-
-        # 2. Research
         researcher = ResearchService()
-        evidence_list = researcher.execute_plan(research_plan)
-        print(f"[{task_id}] Research completed with {len(evidence_list)} pieces of evidence.")
+        writer = WriterService()
+
+        # 1. Plan
+        print(f"[{task_id}] Creating research plan...")
+        research_plan = planner.create_plan(query)
+        print(f"[{task_id}] ✅ Plan created with {len(research_plan.sub_tasks)} sub-tasks.")
+
+        # 2. Research (Using parallel execution)
+        print(f"[{task_id}] 🔍 Starting parallel research execution...")
+        evidence_list = await researcher.execute_plan_parallel(research_plan)
+        print(f"[{task_id}] ✅ Research completed with {len(evidence_list)} pieces of evidence.")
 
         # 3. Write
-        writer = WriterService()
+        print(f"[{task_id}] 📝 Generating report...")
         report_content = writer.write_report(query, evidence_list)
-        print(f"[{task_id}] Report generated.")
+        print(f"[{task_id}] ✅ Report generated.")
 
         # 4. Store result
-        tasks[task_id] = {"status": "completed", "report": report_content, "sources": "Generated from evidence"}
-        print(f"Research completed for task {task_id}")
+        tasks[task_id] = {
+            "status": "completed", 
+            "report": report_content, 
+            "sources": f"Generated from {len(evidence_list)} evidence sources",
+            "evidence_count": len(evidence_list)
+        }
+        print(f"🎉 Research completed for task {task_id}")
 
     except Exception as e:
-        print(f"Error during research pipeline for task {task_id}: {e}")
+        print(f"❌ Error during research pipeline for task {task_id}: {e}")
         tasks[task_id] = {"status": "failed", "report": f"An error occurred: {e}"}
+
+# --- Backward Compatibility Sync Version ---
+def run_real_research_pipeline_sync(task_id: str, query: str):
+    """
+    Synchronous wrapper for backward compatibility.
+    """
+    import asyncio
+    asyncio.run(run_real_research_pipeline(task_id, query))
 
 
 # --- Deep Research Pipeline (Together AI Pattern) ---
@@ -144,31 +184,59 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
 async def health_check():
     """
     Health check endpoint for Docker and monitoring.
+    Optimized with caching to reduce response time.
     """
-    return {"status": "healthy", "service": "Aletheia Deep Research API", "version": "0.2.0"}
+    current_time = time.time()
+    
+    # Return cached response if within TTL
+    if current_time - _health_check_cache["last_check"] < HEALTH_CACHE_TTL:
+        return {
+            "status": _health_check_cache["status"],
+            "service": "Aletheia Deep Research API", 
+            "version": "0.2.0",
+            "cached": True
+        }
+    
+    # Perform actual health check
+    api_status = get_api_keys_status()
+    health_status = "healthy" if api_status["saptiva_available"] or api_status["tavily_available"] else "degraded"
+    
+    # Update cache
+    _health_check_cache["status"] = health_status
+    _health_check_cache["last_check"] = current_time
+    
+    return {
+        "status": health_status,
+        "service": "Aletheia Deep Research API", 
+        "version": "0.2.0",
+        "api_keys": api_status,
+        "cached": False,
+        "timestamp": current_time
+    }
 
 @app.post("/research", status_code=status.HTTP_202_ACCEPTED, response_model=TaskStatus)
 async def start_research(request: ResearchRequest, background_tasks: BackgroundTasks):
     """
-    Starts a new research task.
+    Starts a new research task with performance optimizations.
     """
-    # Check for API keys and inform the user if they are missing
-    saptiva_key = os.getenv("SAPTIVA_API_KEY")
-    tavily_key = os.getenv("TAVILY_API_KEY")
+    # Use cached API key status
+    api_status = get_api_keys_status()
 
-    if not saptiva_key or saptiva_key == "pon_tu_api_key_aqui":
-        # The Saptiva adapter has a mock mode, so this is a soft warning.
+    if not api_status["saptiva_available"]:
         print("Warning: SAPTIVA_API_KEY is not set. The planner and writer will use mock data.")
 
-    if not tavily_key or tavily_key == "pon_tu_api_key_aqui":
-        # The Tavily adapter will fail, so this is a hard error for the research step.
-        # The pipeline will still run but the research step will be disabled.
+    if not api_status["tavily_available"]:
         print("Warning: TAVILY_API_KEY is not set. The research step will be skipped.")
 
     task_id = str(uuid.uuid4())
-    tasks[task_id] = {"status": "accepted"}
-    background_tasks.add_task(run_real_research_pipeline, task_id, request.query)
-    return TaskStatus(task_id=task_id, status="accepted", details="Research task has been accepted and is running in the background.")
+    tasks[task_id] = {"status": "accepted", "started_at": time.time()}
+    background_tasks.add_task(run_real_research_pipeline_sync, task_id, request.query)
+    
+    return TaskStatus(
+        task_id=task_id, 
+        status="accepted", 
+        details="Research task has been accepted and is running with optimized parallel processing."
+    )
 
 @app.get("/tasks/{task_id}/status", response_model=TaskStatus)
 async def get_task_status(task_id: str):
@@ -221,26 +289,25 @@ async def get_traces(task_id: str):
 @app.post("/deep-research", status_code=status.HTTP_202_ACCEPTED, response_model=TaskStatus)
 async def start_deep_research(request: DeepResearchRequest, background_tasks: BackgroundTasks):
     """
-    Starts a new iterative deep research task using Together AI pattern.
+    Starts a new iterative deep research task using Together AI pattern with performance optimizations.
     """
-    # Check for API keys
-    saptiva_key = os.getenv("SAPTIVA_API_KEY")
-    tavily_key = os.getenv("TAVILY_API_KEY")
+    # Use cached API key status for better performance
+    api_status = get_api_keys_status()
 
-    if not saptiva_key or saptiva_key == "pon_tu_api_key_aqui":
+    if not api_status["saptiva_available"]:
         print("Warning: SAPTIVA_API_KEY is not set. Some agents will use mock data.")
 
-    if not tavily_key or tavily_key == "pon_tu_api_key_aqui":
+    if not api_status["tavily_available"]:
         print("Warning: TAVILY_API_KEY is not set. Research will be limited.")
 
     task_id = str(uuid.uuid4())
-    deep_research_tasks[task_id] = {"status": "accepted"}
+    deep_research_tasks[task_id] = {"status": "accepted", "started_at": time.time()}
     background_tasks.add_task(run_deep_research_pipeline, task_id, request)
 
     return TaskStatus(
         task_id=task_id,
         status="accepted",
-        details=f"Deep research task accepted. Configuration: {request.max_iterations} iterations, {request.min_completion_score} min score."
+        details=f"Deep research task accepted with parallel processing. Configuration: {request.max_iterations} iterations, {request.min_completion_score} min score."
     )
 
 @app.get("/deep-research/{task_id}", response_model=DeepResearchReport)

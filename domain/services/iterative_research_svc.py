@@ -108,15 +108,15 @@ class IterativeResearchOrchestrator:
 
             event_logger.log_iteration_started(task_id, iteration_num, iteration_queries)
 
-            # Execute research for this iteration
+            # Execute research for this iteration with parallel processing
             if iteration_num == 1:
-                # First iteration: use initial plan
-                iteration_evidence = self.researcher.execute_plan(initial_plan)
+                # First iteration: use initial plan with parallel execution
+                iteration_evidence = await self.researcher.execute_plan_parallel(initial_plan)
                 queries_executed = [task.query for task in initial_plan.sub_tasks]
             else:
-                # Subsequent iterations: use refinement queries
+                # Subsequent iterations: use refinement queries with parallel execution
                 refinement_queries = iterations[-1].refinement_queries or []
-                iteration_evidence = await self._execute_refinement_queries(refinement_queries)
+                iteration_evidence = await self._execute_refinement_queries_parallel(refinement_queries)
                 queries_executed = [rq.query for rq in refinement_queries]
 
             all_evidence.extend(iteration_evidence)
@@ -196,7 +196,7 @@ class IterativeResearchOrchestrator:
         return result
 
     async def _execute_refinement_queries(self, refinement_queries: list[RefinementQuery]) -> list[Evidence]:
-        """Execute refinement queries to address identified gaps."""
+        """Execute refinement queries to address identified gaps (sequential version)."""
         if not refinement_queries:
             return []
 
@@ -218,6 +218,32 @@ class IterativeResearchOrchestrator:
 
         # Execute refinement research
         return self.researcher.execute_plan(refinement_plan)
+
+    async def _execute_refinement_queries_parallel(self, refinement_queries: list[RefinementQuery]) -> list[Evidence]:
+        """Execute refinement queries to address identified gaps with parallel processing."""
+        if not refinement_queries:
+            return []
+
+        print(f"🔄 Executing {len(refinement_queries)} refinement queries in parallel...")
+
+        # Convert refinement queries to research sub-tasks
+        sub_tasks = []
+        for i, rq in enumerate(refinement_queries):
+            sub_task = ResearchSubTask(
+                id=f"refinement_{i+1}",
+                query=rq.query,
+                sources=rq.expected_sources
+            )
+            sub_tasks.append(sub_task)
+
+        # Create plan for refinement queries
+        refinement_plan = ResearchPlan(
+            main_query="Refinement research",
+            sub_tasks=sub_tasks
+        )
+
+        # Execute refinement research with parallel processing
+        return await self.researcher.execute_plan_parallel(refinement_plan)
 
     def get_research_summary(self, result: DeepResearchResult) -> dict[str, Any]:
         """Generate a summary of the research process for API responses."""
