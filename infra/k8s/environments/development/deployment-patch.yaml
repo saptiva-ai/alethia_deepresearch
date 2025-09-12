@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aletheia
+spec:
+  template:
+    spec:
+      containers:
+      - name: aletheia
+        env:
+        - name: ENVIRONMENT
+          value: "development"
+        - name: LOG_LEVEL
+          value: "DEBUG"
+        - name: DEBUG
+          value: "true"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+        command: ["uvicorn"]
+        args: ["apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

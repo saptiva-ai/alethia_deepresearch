@@ -1,0 +1,136 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aletheia
+  labels:
+    app: aletheia
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: aletheia
+      component: api
+  template:
+    metadata:
+      labels:
+        app: aletheia
+        component: api
+    spec:
+      serviceAccountName: aletheia
+      securityContext:
+        fsGroup: 1000
+      containers:
+      - name: aletheia
+        image: ghcr.io/saptiva-ai/alethia_deepresearch:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: ENVIRONMENT
+          value: "production"
+        - name: SAPTIVA_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aletheia-secrets
+              key: saptiva-api-key
+        - name: TAVILY_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aletheia-secrets
+              key: tavily-api-key
+        - name: WEAVIATE_HOST
+          value: "http://weaviate:8080"
+        - name: OTEL_EXPORTER_OTLP_ENDPOINT
+          value: "http://jaeger-collector:4317"
+        - name: ARTIFACTS_DIR
+          value: "/app/runs"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: artifacts
+          mountPath: /app/runs
+        - name: logs
+          mountPath: /app/logs
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+      volumes:
+      - name: artifacts
+        persistentVolumeClaim:
+          claimName: aletheia-artifacts
+      - name: logs
+        emptyDir: {}
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: "kubernetes.io/arch"
+        operator: "Equal"
+        value: "amd64"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: aletheia
+  labels:
+    app: aletheia
+    component: api
+spec:
+  selector:
+    app: aletheia
+    component: api
+  ports:
+  - name: http
+    port: 80
+    targetPort: 8000
+    protocol: TCP
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: aletheia
+  labels:
+    app: aletheia
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: aletheia-artifacts
+  labels:
+    app: aletheia
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
