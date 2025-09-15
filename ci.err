@@ -1,7 +1,68 @@
-Se deshabilitaron los workflows secundarios (`pr-review.yml`, `release.yml`, `cd.yml`) para evitar ejecuciones duplicadas y errores de sintaxis. Solo permanece `.github/workflows/ci.yml`, que ejecuta lint + pruebas unitarias con cobertura (≥50%).
+1m 33s
+Run python -m pytest tests/unit/ \
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-7.4.3, pluggy-1.6.0 -- /opt/hostedtoolcache/Python/3.11.13/x64/bin/python
+cachedir: .pytest_cache
+metadata: {'Python': '3.11.13', 'Platform': 'Linux-6.11.0-1018-azure-x86_64-with-glibc2.39', 'Packages': {'pytest': '7.4.3', 'pluggy': '1.6.0'}, 'Plugins': {'json-report': '1.5.0', 'metadata': '3.1.1', 'cov': '4.1.0', 'asyncio': '0.21.1', 'html': '4.1.1', 'anyio': '3.7.1'}, 'CI': 'true', 'JAVA_HOME': '/usr/lib/jvm/temurin-17-jdk-amd64'}
+rootdir: /home/runner/work/alethia_deepresearch/alethia_deepresearch
+configfile: pyproject.toml
+plugins: json-report-1.5.0, metadata-3.1.1, cov-4.1.0, asyncio-0.21.1, html-4.1.1, anyio-3.7.1
+asyncio: mode=Mode.AUTO
+collecting ... collected 23 items
 
-Errores anteriores:
-- `release.yml` tenía un bloque `python -c` mal escapado; al eliminarlo desaparece el problema.
-- La cobertura baja en el job de release venía de no instalar el paquete editable; ya no aplica.
+tests/unit/test_iterative_research_orchestrator.py::TestResearchIteration::test_init PASSED [  4%]
+tests/unit/test_iterative_research_orchestrator.py::TestResearchIteration::test_init_with_optional_fields PASSED [  8%]
+tests/unit/test_iterative_research_orchestrator.py::TestDeepResearchResult::test_init PASSED [ 13%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_init_default PASSED [ 17%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_init_custom_params PASSED [ 21%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_execute_deep_research_single_iteration_success PASSED [ 26%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_execute_deep_research_multi_iteration PASSED [ 30%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_execute_deep_research_max_iterations_reached PASSED [ 34%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_execute_refinement_queries_parallel_empty_list PASSED [ 39%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_execute_refinement_queries_parallel_with_queries PASSED [ 43%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestrator::test_get_research_summary PASSED [ 47%]
+tests/unit/test_iterative_research_orchestrator.py::TestIterativeResearchOrchestratorIntegration::test_full_workflow_with_event_logging PASSED [ 52%]
+tests/unit/test_telemetry.py::TestTelemetryManager::test_setup_tracing_full PASSED [ 56%]
+tests/unit/test_telemetry.py::TestTelemetryManager::test_setup_tracing_no_exporters PASSED [ 60%]
+tests/unit/test_telemetry.py::TestTelemetryManager::test_get_tracer_uninitialized PASSED [ 65%]
+tests/unit/test_telemetry.py::TestTelemetryManager::test_get_tracer_initialized PASSED [ 69%]
+tests/unit/test_telemetry.py::test_trace_async_operation_decorator PASSED [ 73%]
+tests/unit/test_telemetry.py::test_trace_sync_operation_decorator PASSED [ 78%]
+tests/unit/test_telemetry.py::test_trace_async_operation_exception PASSED [ 82%]
+tests/unit/test_telemetry.py::TestEventLogger::test_log_event PASSED     [ 86%]
+tests/unit/test_telemetry.py::TestEventLogger::test_log_research_started PASSED [ 91%]
+tests/unit/test_telemetry.py::TestEventLogger::test_get_events_for_task PASSED [ 95%]
+tests/unit/test_telemetry.py::TestEventLogger::test_export_events_ndjson PASSED [100%]
 
-Vuelve a ejecutar únicamente el workflow `CI` tras hacer push.
+--------------------------------- JSON report ----------------------------------
+report saved to: test-results.json
+
+---------- coverage: platform linux, python 3.11.13-final-0 ----------
+Name                                           Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------
+adapters/extractor/pdf_extractor.py              170    170     0%   1-288
+adapters/guard/basic_guard.py                    106    106     0%   1-238
+adapters/saptiva_model/saptiva_client.py          65     44    32%   22-23, 29-33, 37-76, 80-91, 95, 99-106, 110-133
+adapters/tavily_search/tavily_client.py           63     44    30%   16, 23-30, 36-43, 50-51, 57-64, 70-75, 81-89, 95-122
+adapters/telemetry/events.py                     143     40    72%   78, 80, 155-156, 168, 182, 190, 199, 207, 220, 236-238, 254, 273-294, 303, 313, 320-324, 327-328, 331-347
+adapters/telemetry/tracing.py                    146     38    74%   37-40, 45, 74-77, 82, 92-93, 107-108, 112-119, 149-152, 196-197, 207-210, 219-220, 225-228, 233-234
+adapters/weaviate_vector/weaviate_adapter.py     104     79    24%   21-24, 35-64, 68-120, 124-159, 163-175, 182-187, 192-211, 215-244
+adapters/web_surfer/basic_browser.py             118    118     0%   1-198
+domain/models/evaluation.py                       24      0   100%
+domain/models/evidence.py                         15      0   100%
+domain/models/plan.py                              9      0   100%
+domain/services/evaluation_svc.py                 79     60    24%   29-38, 44-48, 54-63, 67-69, 103-105, 138-140, 169-180, 184-204, 215-237, 241-263
+domain/services/iterative_research_svc.py        127      9    93%   169, 205-218
+domain/services/planner_svc.py                    30     19    37%   19-29, 35, 45-59
+domain/services/research_svc.py                   96     73    24%   18-20, 27, 36-64, 71-111, 115-124, 128-144, 150, 154, 158-159
+domain/services/writer_svc.py                     39     24    38%   25-34, 41-63, 66-68, 102
+----------------------------------------------------------------------------
+TOTAL                                           1334    824    38%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+
+FAIL Required test coverage of 50% not reached. Total coverage: 38.23%
+- Generated html report: file:///home/runner/work/alethia_deepresearch/alethia_deepresearch/test-results.html -
+======================== 23 passed in 92.42s (0:01:32) =========================
+Error: Process completed with exit code 1.
+
