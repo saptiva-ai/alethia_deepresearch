@@ -1,0 +1,468 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.13, pytest-7.4.3, pluggy-1.6.0
+rootdir: /home/jazielflo/Proyects/alethia_deepresearch
+configfile: pyproject.toml
+plugins: anyio-3.7.1, asyncio-0.21.1, cov-4.1.0
+asyncio: mode=Mode.AUTO
+collected 11 items
+
+tests/unit/test_telemetry.py ..F...F....                                 [100%]
+
+=================================== FAILURES ===================================
+______________ TestTelemetryManager.test_get_tracer_uninitialized ______________
+tests/unit/test_telemetry.py:59: in test_get_tracer_uninitialized
+    assert isinstance(tracer, trace.NoOpTracer)
+E   AssertionError: assert False
+E    +  where False = isinstance(<opentelemetry.trace.ProxyTracer object at 0x778c5b39fdd0>, <class 'opentelemetry.trace.NoOpTracer'>)
+E    +    where <class 'opentelemetry.trace.NoOpTracer'> = trace.NoOpTracer
+_____________________ test_trace_async_operation_exception _____________________
+tests/unit/test_telemetry.py:119: in test_trace_async_operation_exception
+    mock_span.record_exception.assert_called_once()
+/usr/lib/python3.11/unittest/mock.py:918: in assert_called_once
+    raise AssertionError(msg)
+E   AssertionError: Expected 'record_exception' to have been called once. Called 0 times.
+
+---------- coverage: platform linux, python 3.11.13-final-0 ----------
+Name                                           Stmts   Miss  Cover   Missing
+----------------------------------------------------------------------------
+adapters/extractor/pdf_extractor.py              169    169     0%   1-274
+adapters/guard/basic_guard.py                    107    107     0%   1-239
+adapters/saptiva_model/saptiva_client.py          67     67     0%   1-139
+adapters/tavily_search/tavily_client.py           62     62     0%   1-126
+adapters/telemetry/events.py                     143     40    72%   76, 78, 154-155, 172, 186, 199, 213, 226, 239, 252-254, 270, 293-314, 323, 329, 336-340, 343-344, 347-363
+adapters/telemetry/tracing.py                    145     44    70%   44, 71-74, 79, 89-90, 104-105, 109-116, 131, 137-148, 160-161, 188-189, 199-202, 209-210, 216-219, 224-225
+adapters/weaviate_vector/weaviate_adapter.py     104    104     0%   1-240
+adapters/web_surfer/basic_browser.py             117    117     0%   1-199
+domain/models/evaluation.py                       24     24     0%   1-34
+domain/models/evidence.py                         16     16     0%   1-20
+domain/models/plan.py                              9      9     0%   2-13
+domain/services/evaluation_svc.py                 79     79     0%   1-267
+domain/services/iterative_research_svc.py        126    126     0%   1-250
+domain/services/planner_svc.py                    30     30     0%   1-62
+domain/services/research_svc.py                   98     98     0%   1-171
+domain/services/writer_svc.py                     40     40     0%   1-110
+----------------------------------------------------------------------------
+TOTAL                                           1336   1132    15%
+Coverage HTML written to dir htmlcov
+Coverage XML written to file coverage.xml
+
+FAIL Required test coverage of 80% not reached. Total coverage: 15.27%
+=========================== short test summary info ============================
+FAILED tests/unit/test_telemetry.py::TestTelemetryManager::test_get_tracer_uninitialized
+FAILED tests/unit/test_telemetry.py::test_trace_async_operation_exception - A...
+========================= 2 failed, 9 passed in 6.52s ==========================
+\n\n--- tracing.py ---\n\n
+"""
+OpenTelemetry tracing setup for Aletheia Deep Research.
+Provides distributed tracing across all research operations.
+"""
+from contextlib import contextmanager
+from functools import wraps
+import logging
+import os
+from typing import Any, Optional
+
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
+
+logger = logging.getLogger(__name__)
+
+
+class TelemetryManager:
+    """Manages OpenTelemetry configuration and tracing for Aletheia."""
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(TelemetryManager, cls).__new__(cls)
+            cls._instance.tracer_provider = None
+            cls._instance.tracer = None
+            cls._instance.initialized = False
+        return cls._instance
+
+    def reset(self):
+        """Resets the singleton instance. For testing purposes only."""
+        self.tracer_provider = None
+        self.tracer = None
+        self.initialized = False
+        TelemetryManager._instance = None
+
+    def setup_tracing(self) -> None:
+        """Initialize OpenTelemetry tracing."""
+        if self.initialized:
+            return
+
+        try:
+            # Create resource with service information
+            resource = Resource.create({
+                "service.name": "aletheia-deep-research",
+                "service.version": "0.2.0",
+                "service.namespace": "research",
+                "deployment.environment": os.getenv("ENVIRONMENT", "development")
+            })
+
+            # Create tracer provider
+            self.tracer_provider = TracerProvider(resource=resource)
+            trace.set_tracer_provider(self.tracer_provider)
+
+            # Configure exporters
+            self._setup_exporters()
+
+            # Get tracer
+            self.tracer = trace.get_tracer("aletheia.research", "0.2.0")
+
+            # Instrument libraries
+            self._setup_instrumentation()
+
+            self.initialized = True
+            logger.info("OpenTelemetry tracing initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenTelemetry: {e}")
+            # Create a no-op tracer for graceful degradation
+            self.tracer = trace.NoOpTracer()
+
+    def _setup_exporters(self) -> None:
+        """Setup span exporters."""
+        if not self.tracer_provider:
+            return
+
+        # OTLP Exporter (for Jaeger, etc.)
+        otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+        if otlp_endpoint:
+            try:
+                otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint)
+                otlp_processor = BatchSpanProcessor(otlp_exporter)
+                self.tracer_provider.add_span_processor(otlp_processor)
+                logger.info(f"OTLP exporter configured for {otlp_endpoint}")
+            except Exception as e:
+                logger.warning(f"Failed to setup OTLP exporter: {e}")
+
+        # Console exporter for development
+        if os.getenv("ENVIRONMENT") == "development":
+            console_exporter = ConsoleSpanExporter()
+            console_processor = BatchSpanProcessor(console_exporter)
+            self.tracer_provider.add_span_processor(console_processor)
+
+    def _setup_instrumentation(self) -> None:
+        """Setup automatic instrumentation."""
+        try:
+            # Instrument HTTP clients
+            HTTPXClientInstrumentor().instrument()
+            logger.info("HTTPX instrumentation enabled")
+        except Exception as e:
+            logger.warning(f"Failed to instrument HTTPX: {e}")
+
+    def instrument_fastapi(self, app) -> None:
+        """Instrument FastAPI application."""
+        if not self.initialized:
+            self.setup_tracing()
+
+        try:
+            FastAPIInstrumentor.instrument_app(app)
+            logger.info("FastAPI instrumentation enabled")
+        except Exception as e:
+            logger.warning(f"Failed to instrument FastAPI: {e}")
+
+    def get_tracer(self) -> trace.Tracer:
+        """Get the configured tracer."""
+        if not self.initialized:
+            self.setup_tracing()
+        return self.tracer or trace.NoOpTracer()
+
+
+# Global telemetry manager instance
+telemetry_manager = TelemetryManager()
+
+
+def get_tracer() -> trace.Tracer:
+    """Get the global tracer instance."""
+    return telemetry_manager.get_tracer()
+
+
+@contextmanager
+def trace_operation(name: str, attributes: Optional[dict[str, Any]] = None):
+    """Context manager for tracing operations."""
+    tracer = get_tracer()
+    with tracer.start_as_current_span(name) as span:
+        if attributes:
+            for key, value in attributes.items():
+                span.set_attribute(key, value)
+
+        try:
+            yield span
+        except Exception as e:
+            span.record_exception(e)
+            span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+            raise
+
+
+def trace_async_operation(operation_name: str, attributes: Optional[dict[str, Any]] = None):
+    """Decorator for tracing async operations."""
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            tracer = get_tracer()
+            with tracer.start_as_current_span(operation_name) as span:
+                # Add attributes
+                if attributes:
+                    for key, value in attributes.items():
+                        span.set_attribute(key, value)
+
+                # Add function info
+                span.set_attribute("function.name", func.__name__)
+                span.set_attribute("function.module", func.__module__)
+
+                try:
+                    result = await func(*args, **kwargs)
+                    span.set_status(trace.Status(trace.StatusCode.OK))
+                    return result
+                except Exception as e:
+                    span.record_exception(e)
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                    raise
+        return wrapper
+    return decorator
+
+
+def trace_sync_operation(operation_name: str, attributes: Optional[dict[str, Any]] = None):
+    """Decorator for tracing sync operations."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            tracer = get_tracer()
+            with tracer.start_as_current_span(operation_name) as span:
+                # Add attributes
+                if attributes:
+                    for key, value in attributes.items():
+                        span.set_attribute(key, value)
+
+                # Add function info
+                span.set_attribute("function.name", func.__name__)
+                span.set_attribute("function.module", func.__module__)
+
+                try:
+                    result = func(*args, **kwargs)
+                    span.set_status(trace.Status(trace.StatusCode.OK))
+                    return result
+                except Exception as e:
+                    span.record_exception(e)
+                    span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
+                    raise
+        return wrapper
+    return decorator
+
+
+def add_span_attributes(span: trace.Span, attributes: dict[str, Any]) -> None:
+    """Helper to add multiple attributes to a span."""
+    for key, value in attributes.items():
+        span.set_attribute(key, value)
+
+
+def record_research_metrics(span: trace.Span, evidence_count: int, execution_time: float,
+                          quality_score: Optional[float] = None) -> None:
+    """Record research-specific metrics in span."""
+    span.set_attribute("research.evidence_count", evidence_count)
+    span.set_attribute("research.execution_time_seconds", execution_time)
+    if quality_score is not None:
+        span.set_attribute("research.quality_score", quality_score)
+
+
+def setup_telemetry() -> TelemetryManager:
+    """Setup and return the global telemetry manager."""
+    telemetry_manager.setup_tracing()
+    return telemetry_manager
+\n\n--- test_telemetry.py ---\n\n
+"""
+Tests for the telemetry adapter, including tracing and event logging.
+"""
+import importlib
+import os
+from unittest.mock import MagicMock, patch, mock_open
+
+import pytest
+from opentelemetry import trace
+
+from adapters.telemetry import tracing
+from adapters.telemetry.tracing import (
+    TelemetryManager,
+    trace_async_operation,
+    trace_sync_operation,
+)
+from adapters.telemetry.events import (
+    EventLogger,
+    EventType,
+)
+
+
+@pytest.fixture(autouse=True)
+def reset_telemetry_manager():
+    """Reloads the tracing module to reset the global telemetry_manager."""
+    TelemetryManager().reset()
+
+
+@patch("adapters.telemetry.tracing.trace.set_tracer_provider")
+@patch("adapters.telemetry.tracing.HTTPXClientInstrumentor")
+class TestTelemetryManager:
+    """Tests for the TelemetryManager."""
+
+    def test_setup_tracing_full(self, mock_instrumentor, mock_set_provider):
+        """Test setup_tracing with both OTLP and console exporters."""
+        with patch.dict(os.environ, {"OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317", "ENVIRONMENT": "development"}):
+            manager = TelemetryManager()
+            manager.setup_tracing()
+
+            assert manager.initialized
+            assert manager.tracer is not None
+            assert len(manager.tracer_provider._active_span_processor._span_processors) == 2
+
+    def test_setup_tracing_no_exporters(self, mock_instrumentor, mock_set_provider):
+        """Test setup_tracing with no exporters configured."""
+        with patch.dict(os.environ, {}, clear=True):
+            manager = TelemetryManager()
+            manager.setup_tracing()
+
+            assert manager.initialized
+            assert len(manager.tracer_provider._active_span_processor._span_processors) == 0
+
+    def test_get_tracer_uninitialized(self, mock_instrumentor, mock_set_provider):
+        """Test that get_tracer returns a NoOpTracer if not initialized."""
+        manager = TelemetryManager()
+        manager.initialized = False
+        manager.tracer = None
+        tracer = manager.get_tracer()
+        assert isinstance(tracer, trace.NoOpTracer)
+
+    def test_get_tracer_initialized(self, mock_instrumentor, mock_set_provider):
+        """Test that get_tracer returns a real tracer after initialization."""
+        manager = TelemetryManager()
+        manager.setup_tracing()
+        tracer = manager.get_tracer()
+        assert not isinstance(tracer, trace.NoOpTracer)
+
+
+@pytest.mark.asyncio
+async def test_trace_async_operation_decorator():
+    """Test the trace_async_operation decorator."""
+    mock_tracer = MagicMock()
+    mock_span = MagicMock()
+    mock_tracer.start_as_current_span.return_value.__aenter__.return_value = mock_span
+
+    @trace_async_operation("test_op")
+    async def my_async_func(x, y):
+        return x + y
+
+    with patch("adapters.telemetry.tracing.get_tracer", return_value=mock_tracer):
+        result = await my_async_func(1, 2)
+
+    assert result == 3
+    mock_tracer.start_as_current_span.assert_called_once_with("test_op")
+
+
+def test_trace_sync_operation_decorator():
+    """Test the trace_sync_operation decorator."""
+    mock_tracer = MagicMock()
+    mock_span = MagicMock()
+    mock_tracer.start_as_current_span.return_value.__enter__.return_value = mock_span
+
+    @trace_sync_operation("test_sync_op")
+    def my_sync_func(x, y):
+        return x * y
+
+    with patch("adapters.telemetry.tracing.get_tracer", return_value=mock_tracer):
+        result = my_sync_func(3, 4)
+
+    assert result == 12
+    mock_tracer.start_as_current_span.assert_called_once_with("test_sync_op")
+
+
+@pytest.mark.asyncio
+async def test_trace_async_operation_exception():
+    """Test that the decorator records exceptions."""
+    mock_tracer = MagicMock()
+    mock_span = MagicMock()
+    mock_tracer.start_as_current_span.return_value.__aenter__.return_value = mock_span
+
+    @trace_async_operation("test_op_fail")
+    async def my_failing_func():
+        raise ValueError("Test error")
+
+    with patch("adapters.telemetry.tracing.get_tracer", return_value=mock_tracer):
+        with pytest.raises(ValueError):
+            await my_failing_func()
+
+    mock_span.record_exception.assert_called_once()
+
+
+class TestEventLogger:
+    """Tests for the EventLogger."""
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    def test_log_event(self, mock_makedirs, mock_open_file):
+        """Test the core log_event method."""
+        logger = EventLogger()
+        logger.set_task_context("task-123")
+
+        event = logger.log_event(
+            EventType.RESEARCH_STARTED,
+            data={"query": "test"},
+            duration_ms=10.5,
+        )
+
+        assert len(logger.events) == 1
+        assert event.event_type == EventType.RESEARCH_STARTED
+        assert event.task_id == "task-123"
+        assert event.data["query"] == "test"
+        assert event.duration_ms == 10.5
+        mock_open_file.assert_called_with(logger.events_file, "a", encoding="utf-8")
+        mock_open_file().write.assert_called_once()
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    def test_log_research_started(self, mock_makedirs, mock_open_file):
+        """Test the specific log_research_started method."""
+        logger = EventLogger()
+        logger.log_event = MagicMock()
+
+        logger.log_research_started("task-abc", "my query", {"config": 1})
+
+        logger.log_event.assert_called_once()
+        args, kwargs = logger.log_event.call_args
+        assert args[0] == EventType.RESEARCH_STARTED
+        assert kwargs['data']['query'] == "my query"
+        assert kwargs['task_id'] == "task-abc"
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    def test_get_events_for_task(self, mock_makedirs, mock_open_file):
+        """Test filtering events by task_id."""
+        logger = EventLogger()
+        logger.log_event(EventType.RESEARCH_STARTED, task_id="task-1")
+        logger.log_event(EventType.PLAN_CREATED, task_id="task-2")
+        logger.log_event(EventType.RESEARCH_COMPLETED, task_id="task-1")
+
+        task_1_events = logger.get_events_for_task("task-1")
+        assert len(task_1_events) == 2
+        assert task_1_events[0].event_type == EventType.RESEARCH_STARTED
+        assert task_1_events[1].event_type == EventType.RESEARCH_COMPLETED
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("os.makedirs")
+    def test_export_events_ndjson(self, mock_makedirs, mock_open_file):
+        """Test exporting events to NDJSON."""
+        logger = EventLogger()
+        event1 = logger.log_event(EventType.RESEARCH_STARTED, task_id="task-1")
+        event2 = logger.log_event(EventType.PLAN_CREATED, task_id="task-1")
+
+        ndjson = logger.export_events_ndjson(task_id="task-1")
+        lines = ndjson.strip().split('\n')
+
+        assert len(lines) == 2
+        assert '"event_type": "research.started"' in lines[0]
+        assert '"event_type": "plan.created"' in lines[1]

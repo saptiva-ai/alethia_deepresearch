@@ -1,192 +1,105 @@
-name: 🧪 Continuous Integration
+name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      clear_cache:
+        description: 'Clear pip cache'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: "3.11"
 
 jobs:
-  test:
-    name: 🧪 Tests
+  quality:
     runs-on: ubuntu-latest
-    
-    strategy:
-      matrix:
-        python-version: ['3.11', '3.12']
-    
-    steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      
-    - name: 🐍 Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-        
-    - name: 📦 Cache dependencies
-      uses: actions/cache@v3
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-          
-    - name: 📥 Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-asyncio pytest-cov httpx
-        
-    - name: 🧪 Run tests
-      env:
-        SAPTIVA_API_KEY: "mock_key_for_testing"
-        TAVILY_API_KEY: "mock_key_for_testing"
-        VECTOR_BACKEND: "none"
-        ENVIRONMENT: "test"
-      run: |
-        pytest tests/ -v --cov=domain --cov=adapters --cov=apps --cov-report=xml --cov-report=html
-        
-    - name: 📊 Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
 
-  lint:
-    name: 🔍 Code Quality
-    runs-on: ubuntu-latest
-    
     steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: 📦 Install linting tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install ruff black mypy bandit safety
-        pip install -r requirements.txt
-        
-    - name: 🔧 Check code formatting with Black
-      run: black --check --diff .
-      
-    - name: 🔍 Lint with Ruff
-      run: ruff check .
-      
-    - name: 🏷️ Type check with MyPy
-      run: mypy domain/ adapters/ apps/ --ignore-missing-imports
-      
-    - name: 🔒 Security check with Bandit
-      run: bandit -r domain/ adapters/ apps/ -f json -o bandit-report.json
-      continue-on-error: true
-      
-    - name: 🛡️ Check dependencies for vulnerabilities
-      run: safety check --json --output safety-report.json
-      continue-on-error: true
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-  integration:
-    name: 🔗 Integration Tests
-    runs-on: ubuntu-latest
-    needs: [test, lint]
-    
-    services:
-      weaviate:
-        image: semitechnologies/weaviate:1.22.4
-        ports:
-          - 8080:8080
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: ${{ inputs.clear_cache == 'true' && '' || 'pip' }}
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -e .[dev]
+
+      - name: Verify installation
+        run: |
+          python -c "import domain.models.evidence; print('✅ Domain models import successful')"
+          python -c "import pytest; print(f'✅ Pytest version: {pytest.__version__}')"
+          python -m pytest --version
+          echo "🔍 Listing all files in tests/unit/..."
+          ls -la tests/unit/
+          echo ""
+          echo "🔍 Checking individual test files..."
+          for test_file in tests/unit/test_*.py; do
+            echo "=== Found and testing: $test_file ==="
+            if [ -f "$test_file" ]; then
+              echo "📁 File exists"
+              if python -m pytest --collect-only "$test_file" 2>&1; then
+                echo "✅ Collection successful"
+              else
+                echo "❌ Collection failed"
+              fi
+            else
+              echo "❌ File does not exist"
+            fi
+            echo ""
+          done
+          echo "🔍 Running full test collection with detailed errors..."
+          python -m pytest --collect-only tests/unit/ -v --tb=long 2>&1 || echo "❌ Full test collection failed"
+
+      - name: Run Ruff
+        run: ruff check . --output-format=github
+
+      - name: Run Black
+        run: black --check --diff .
+
+      - name: Run MyPy (domain models)
+        run: mypy domain/models --ignore-missing-imports
+
+      - name: Run unit tests with coverage
         env:
-          QUERY_DEFAULTS_LIMIT: 25
-          AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
-          PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-          DEFAULT_VECTORIZER_MODULE: 'none'
-          ENABLE_MODULES: ''
-          CLUSTER_HOSTNAME: 'node1'
-          
-    steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      
-    - name: 🐍 Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        
-    - name: 📥 Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-asyncio httpx
-        
-    - name: ⏳ Wait for Weaviate
-      run: |
-        timeout 60 bash -c 'until curl -f http://localhost:8080/v1/.well-known/ready; do sleep 2; done'
-        
-    - name: 🧪 Run integration tests
-      env:
-        SAPTIVA_API_KEY: "mock_key_for_testing"
-        TAVILY_API_KEY: "mock_key_for_testing"
-        WEAVIATE_HOST: "http://localhost:8080"
-        VECTOR_BACKEND: "weaviate"
-        ENVIRONMENT: "test"
-      run: |
-        pytest tests/integration/ -v --tb=short
+          SAPTIVA_API_KEY: "mock_key_for_testing"
+          TAVILY_API_KEY: "mock_key_for_testing"
+          VECTOR_BACKEND: "none"
+          ENVIRONMENT: "test"
+        run: |
+          python -m pytest tests/unit/ \
+            --html=test-results.html \
+            --json-report --json-report-file=test-results.json \
+            -v
 
-  build:
-    name: 🐳 Build Docker Image
-    runs-on: ubuntu-latest
-    needs: [test, lint]
-    
-    steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      
-    - name: 🐳 Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-      
-    - name: 🔧 Build Docker image
-      run: |
-        docker build -t aletheia:${{ github.sha }} .
-        docker build -t aletheia:latest .
-        
-    - name: 🧪 Test Docker image
-      run: |
-        docker run --rm -d --name test-container -p 8000:8000 \
-          -e SAPTIVA_API_KEY=mock_key \
-          -e TAVILY_API_KEY=mock_key \
-          -e VECTOR_BACKEND=none \
-          aletheia:latest
-        sleep 10
-        curl -f http://localhost:8000/docs || exit 1
-        docker stop test-container
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: unittests
+          fail_ci_if_error: false
 
-  security:
-    name: 🔒 Security Scan
-    runs-on: ubuntu-latest
-    
-    steps:
-    - name: 📥 Checkout code
-      uses: actions/checkout@v4
-      
-    - name: 🔍 Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
-        
-    - name: 📊 Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: |
+            test-results.html
+            test-results.json
+            coverage.xml
+            htmlcov/

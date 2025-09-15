@@ -65,6 +65,9 @@ plan.yaml
 ESTADO_ACTUAL.md
 ACTIVAR_DEEP_RESEARCH.md
 ANALISIS_PATRONES_AGENTES.md
+daily.txt
+STATUS_REPORT.md
+tools/
 
 # Log files
 *.log
@@ -130,5 +133,6 @@ helm/*/secrets/
 # Local development
 local_*
 dev_*
-test_*
+test_*.tmp
+test_*.temp
 debug_*

@@ -1,23 +1,51 @@
-version: '3.4'
+# Docker Compose for Aletheia Deep Research - Production Ready
+# Essential services: Jaeger, Weaviate, MinIO + Aletheia API
+
+networks:
+  aletheia-network:
+    driver: bridge
+
+volumes:
+  weaviate_data:
+    driver: local
+  minio_data:
+    driver: local
 
 services:
+  # === OBSERVABILITY STACK ===
   jaeger:
     image: jaegertracing/all-in-one:latest
-    container_name: jaeger
+    container_name: aletheia-jaeger
+    restart: unless-stopped
     ports:
-      - "16686:16686" # UI
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
+      - "16686:16686" # Jaeger UI
+      - "4317:4317"   # OTLP gRPC receiver
+      - "4318:4318"   # OTLP HTTP receiver
+      - "14268:14268" # Jaeger HTTP receiver
+      - "6831:6831/udp" # Jaeger UDP receiver
     environment:
       - COLLECTOR_OTLP_ENABLED=true
+      - SPAN_STORAGE_TYPE=memory
+      - LOG_LEVEL=info
+    networks:
+      - aletheia-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:16686/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
+
+  # === DATA STORAGE ===
   weaviate:
-    image: semitechnologies/weaviate:latest
-    container_name: weaviate
+    image: semitechnologies/weaviate:1.21.8
+    container_name: aletheia-weaviate
+    restart: unless-stopped
     ports:
       - "8080:8080"
     volumes:
-      - ./weaviate_data:/var/lib/weaviate
+      - weaviate_data:/var/lib/weaviate
     environment:
       QUERY_DEFAULTS_LIMIT: 25
       AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
@@ -25,16 +53,78 @@ services:
       DEFAULT_VECTORIZER_MODULE: 'none'
       ENABLE_MODULES: ''
       CLUSTER_HOSTNAME: 'node1'
+      LOG_LEVEL: 'info'
+      BACKUP_FILESYSTEM_PATH: '/var/lib/weaviate/backups'
+    networks:
+      - aletheia-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
 
   minio:
     image: minio/minio:latest
-    container_name: minio
+    container_name: aletheia-minio
+    restart: unless-stopped
     ports:
       - "9000:9000" # API
       - "9001:9001" # Console
     volumes:
-      - ./minio_data:/data
+      - minio_data:/data
     environment:
       MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
     command: server /data --console-address ":9001"
+    networks:
+      - aletheia-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+  # === ALETHEIA APPLICATION ===
+  aletheia-api:
+    build:
+      context: ../../
+      dockerfile: Dockerfile
+    container_name: aletheia-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - ENVIRONMENT=docker
+      - SAPTIVA_API_KEY=${SAPTIVA_API_KEY}
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+      - SAPTIVA_MODEL_PLANNER=${SAPTIVA_MODEL_PLANNER}
+      - SAPTIVA_MODEL_WRITER=${SAPTIVA_MODEL_WRITER}
+      - SAPTIVA_CONNECT_TIMEOUT=${SAPTIVA_CONNECT_TIMEOUT}
+      - SAPTIVA_READ_TIMEOUT=${SAPTIVA_READ_TIMEOUT}
+      - VECTOR_BACKEND=weaviate
+      - WEAVIATE_HOST=http://weaviate:8080
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin123
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - ARTIFACTS_DIR=/app/runs
+      - LOG_LEVEL=info
+    volumes:
+      - ./../../runs:/app/runs
+      - ./../../prompts:/app/prompts:ro
+    networks:
+      - aletheia-network
+    depends_on:
+      - weaviate
+      - minio
+      - jaeger
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s

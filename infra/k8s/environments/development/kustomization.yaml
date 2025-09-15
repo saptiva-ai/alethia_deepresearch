@@ -1,0 +1,36 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: aletheia-dev
+
+resources:
+- ../../base/
+
+patchesStrategicMerge:
+- deployment-patch.yaml
+
+configMapGenerator:
+- name: aletheia-config
+  literals:
+  - ENVIRONMENT=development
+  - LOG_LEVEL=DEBUG
+  - DEBUG=true
+
+secretGenerator:
+- name: aletheia-secrets
+  env: .env.development
+
+images:
+- name: ghcr.io/saptiva-ai/alethia_deepresearch
+  newTag: develop
+
+replicas:
+- name: aletheia
+  count: 1
+
+commonLabels:
+  environment: development
+  version: develop
+
+commonAnnotations:
+  aletheia.ai/environment: development
