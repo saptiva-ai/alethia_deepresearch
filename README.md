@@ -44,12 +44,12 @@ vector stores, etc.).
    python -m venv .venv
    source .venv/bin/activate  # Windows: .venv\Scripts\activate
    ```
-2. Instalar dependencias y registrar el paquete en modo editable (evita los errores
-   `ModuleNotFoundError` al ejecutar pruebas):
+2. Instalar dependencias y registrar el paquete en modo editable con extras de desarrollo
+   (evita los errores `ModuleNotFoundError` y trae las herramientas de lint/test):
    ```bash
    pip install --upgrade pip
    pip install -r requirements.txt
-   pip install -e .
+    pip install -e .[dev]
    ```
 3. Definir variables de entorno mínimas (puedes partir de `.env.example`):
    ```bash
@@ -102,7 +102,7 @@ Archivo principal: `.github/workflows/ci.yml`.
 
 1. **Tests (`tests/unit`)**: instala dependencias y ejecuta pytest en Python 3.11 y 3.12 con
    cobertura mínima del 50% (configurable). Exporta `coverage.xml`/`htmlcov`. Asegúrate de tener
-   el paquete instalado (`pip install -e .`) para reproducirlo en local.
+   el paquete instalado (`pip install -e .[dev]`) para reproducirlo en local.
 2. **Lint**: `black --check`, `ruff check`, `mypy domain/models`, `bandit` y `safety`.
 3. **Integration**: levanta un servicio de Weaviate y lanza `pytest tests/integration`.
 4. **Build**: construye y smoke-testea la imagen Docker de la API.

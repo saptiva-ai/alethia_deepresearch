@@ -1,0 +1,6 @@
+Se implementó la separación de dependencias:
+- `requirements.txt` sólo contiene dependencias de runtime.
+- `pyproject.toml` define el extra opcional `dev` con pytest/ruff/black/etc.
+- Workflows (`ci.yml`, `pr-review.yml`, `release.yml`) ahora instalan `pip install -r requirements.txt` seguido de `pip install -e .[dev]`.
+
+Recuerda usar `pip install -e .[dev]` para entornos de desarrollo y CI.
