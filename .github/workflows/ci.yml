@@ -44,13 +44,21 @@ jobs:
           python -c "import domain.models.evidence; print('✅ Domain models import successful')"
           python -c "import pytest; print(f'✅ Pytest version: {pytest.__version__}')"
           python -m pytest --version
+          echo "🔍 Listing all files in tests/unit/..."
+          ls -la tests/unit/
+          echo ""
           echo "🔍 Checking individual test files..."
           for test_file in tests/unit/test_*.py; do
-            echo "=== Testing pytest collection: $test_file ==="
-            if python -m pytest --collect-only "$test_file" 2>&1; then
-              echo "✅ Collection successful"
+            echo "=== Found and testing: $test_file ==="
+            if [ -f "$test_file" ]; then
+              echo "📁 File exists"
+              if python -m pytest --collect-only "$test_file" 2>&1; then
+                echo "✅ Collection successful"
+              else
+                echo "❌ Collection failed"
+              fi
             else
-              echo "❌ Collection failed"
+              echo "❌ File does not exist"
             fi
             echo ""
           done
