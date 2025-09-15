@@ -5,6 +5,13 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      clear_cache:
+        description: 'Clear pip cache'
+        required: false
+        default: 'false'
+        type: boolean
 
 env:
   PYTHON_VERSION: "3.11"
@@ -21,13 +28,23 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
+          cache: ${{ inputs.clear_cache == 'true' && '' || 'pip' }}
+          cache-dependency-path: |
+            requirements.txt
+            pyproject.toml
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .[dev]
+
+      - name: Verify installation
+        run: |
+          python -c "import domain.models.evidence; print('✅ Domain models import successful')"
+          python -c "import pytest; print(f'✅ Pytest version: {pytest.__version__}')"
+          python -m pytest --version
+          python -m pytest --collect-only tests/unit/ | grep "collected" || echo "❌ Test collection failed"
 
       - name: Run Ruff
         run: ruff check . --output-format=github
