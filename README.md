@@ -47,9 +47,9 @@ vector stores, etc.).
 2. Instalar dependencias y registrar el paquete en modo editable con extras de desarrollo
    (evita los errores `ModuleNotFoundError` y trae las herramientas de lint/test):
    ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-    pip install -e .[dev]
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -e .[dev]
    ```
 3. Definir variables de entorno mínimas (puedes partir de `.env.example`):
    ```bash
@@ -82,7 +82,7 @@ black --check .
 # Tipado estático
 mypy domain/models --ignore-missing-imports
 
-# Pruebas unitarias con cobertura (requiere pip install -e .)
+# Pruebas unitarias con cobertura (requiere pip install -e .[dev])
 # El pipeline actual valida un mínimo de 50% de cobertura.
 pytest tests/unit/ -v --cov=domain --cov=adapters --cov=apps --cov-report=term-missing
 

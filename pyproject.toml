@@ -6,11 +6,18 @@ build-backend = "setuptools.build_meta"
 name = "aletheia-deep-research"
 version = "0.2.0"
 description = "Deep research platform with Saptiva agents and Together AI patterns"
-authors = [{name = "Aletheia Team", email = "team@aletheia.dev"}]
+authors = [{ name = "Aletheia Team", email = "team@aletheia.dev" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["research", "ai", "saptiva", "deep-research", "agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -26,39 +33,45 @@ dev = [
     "safety==3.2.8",
 ]
 
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-]
-
 [project.urls]
 Homepage = "https://github.com/your-org/aletheia"
 Documentation = "https://github.com/your-org/aletheia#readme"
 Repository = "https://github.com/your-org/aletheia.git"
 "Bug Tracker" = "https://github.com/your-org/aletheia/issues"
 
+[tool.setuptools.packages.find]
+include = ["adapters*", "apps*", "domain*", "ports*"]
+exclude = [
+    "agents*",
+    "infra*",
+    "runs*",
+    "prompts*",
+    "tests*",
+    "tools*",
+    "scripts*",
+    "docs*",
+    "htmlcov*",
+]
+
 # Black Configuration
 [tool.black]
 line-length = 160
 target-version = ['py311']
-include = '\.pyi?$'
+include = '\\.pyi?$'
 exclude = '''
-/(
-    \.eggs
-  | \.git
-  | \.hg
-  | \.mypy_cache
-  | \.nox
-  | \.tox
-  | \.venv
-  | _build
-  | buck-out
-  | build
-  | dist
-  | node_modules
+/(\
+    \\.eggs\
+  | \\.git\
+  | \\.hg\
+  | \\.mypy_cache\
+  | \\.nox\
+  | \\.tox\
+  | \\.venv\
+  | _build\
+  | buck-out\
+  | build\
+  | dist\
+  | node_modules\
 )/
 '''
 
@@ -67,34 +80,34 @@ exclude = '''
 target-version = "py311"
 line-length = 160
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
-    "ARG001", # unused-function-argument
-    "ARG002", # unused-method-argument
-    "ARG003", # unused-class-method-argument
-    "ARG004", # unused-static-method-argument
-    "ARG005", # unused-lambda-argument
-    "N",  # pep8-naming
-    "S",  # flake8-bandit
-    "T20", # flake8-print
-    "Q",  # flake8-quotes
-    "SIM", # flake8-simplify
-    "TID", # flake8-tidy-imports
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "C4",
+    "UP",
+    "ARG001",
+    "ARG002",
+    "ARG003",
+    "ARG004",
+    "ARG005",
+    "N",
+    "S",
+    "T20",
+    "Q",
+    "SIM",
+    "TID",
 ]
 ignore = [
-    "S101",   # use of assert detected
-    "S104",   # possible binding to all interfaces
-    "S301",   # pickle usage
-    "T201",   # print usage (allowed in dev)
-    "T203",   # pprint usage (allowed in dev)
-    "ARG002", # unused method argument (common in abstract methods)
-    "N806",   # variable in function should be lowercase (for API responses)
-    "N815",   # mixedCase variable in class scope (for API models)
+    "S101",
+    "S104",
+    "S301",
+    "T201",
+    "T203",
+    "ARG002",
+    "N806",
+    "N815",
 ]
 exclude = [
     ".bzr",
@@ -119,10 +132,7 @@ exclude = [
     "venv",
 ]
 
-[tool.ruff.per-file-ignores]
-"tests/*" = ["S101", "ARG001", "ARG002", "UP035"]  # Allow assert and unused args in tests
-"**/test_*.py" = ["S101", "ARG001", "ARG002"]
-"adapters/*" = ["T201"]  # Allow print in adapters for debugging
+[tool.ruff.suppress]
 
 [tool.ruff.isort]
 known-first-party = ["domain", "adapters", "apps", "ports"]
@@ -147,11 +157,7 @@ warn_unused_configs = true
 warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
-module = [
-    "tavily.*",
-    "weaviate.*",
-    "yaml.*",
-]
+module = ["tavily.*", "weaviate.*", "yaml.*"]
 ignore_missing_imports = true
 
 # Pytest Configuration
@@ -163,19 +169,17 @@ addopts = [
     "--tb=short",
     "-ra",
     "--cov=domain",
-    "--cov=adapters", 
+    "--cov=adapters",
     "--cov=apps",
     "--cov-report=term-missing:skip-covered",
     "--cov-report=html:htmlcov",
     "--cov-report=xml",
-    "--cov-fail-under=50"
+    "--cov-fail-under=50",
 ]
-testpaths = [
-    "tests",
-]
+testpaths = ["tests"]
 markers = [
     "unit: Unit tests",
-    "integration: Integration tests", 
+    "integration: Integration tests",
     "e2e: End-to-end tests",
     "slow: Slow tests",
     "external_api: Tests that require external APIs",
@@ -207,10 +211,10 @@ exclude_lines = [
     "if self.debug:",
     "if settings.DEBUG",
     "raise AssertionError",
-    "raise NotImplementedError", 
+    "raise NotImplementedError",
     "if 0:",
-    "if __name__ == .__main__.:",
-    "class .*\\bProtocol\\):",
+    "if __name__ == .__main__.",
+    "class .*\\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
 
@@ -220,17 +224,4 @@ directory = "htmlcov"
 # Bandit Configuration
 [tool.bandit]
 exclude_dirs = ["tests", "venv", ".venv"]
-skips = ["B101", "B601"]  # Skip assert_used and shell_injection in tests
-[tool.setuptools.packages.find]
-include = ["adapters*", "apps*", "domain*", "ports*"]
-exclude = [
-    "agents*",
-    "infra*",
-    "runs*",
-    "prompts*",
-    "tests*",
-    "tools*",
-    "scripts*",
-    "docs*",
-    "htmlcov*",
-]
+skips = ["B101", "B601"]
