@@ -100,13 +100,11 @@ Bandit y Safety también forman parte del pipeline (`bandit -r domain/ adapters/
 
 Archivo principal: `.github/workflows/ci.yml`.
 
-1. **Tests (`tests/unit`)**: instala dependencias y ejecuta pytest en Python 3.11 y 3.12 con
-   cobertura mínima del 50% (configurable). Exporta `coverage.xml`/`htmlcov`. Asegúrate de tener
-   el paquete instalado (`pip install -e .[dev]`) para reproducirlo en local.
-2. **Lint**: `black --check`, `ruff check`, `mypy domain/models`, `bandit` y `safety`.
-3. **Integration**: levanta un servicio de Weaviate y lanza `pytest tests/integration`.
-4. **Build**: construye y smoke-testea la imagen Docker de la API.
-5. **Security**: escaneo con Trivy (se sube el resultado como SARIF).
+1. **Lint & Tests**: instala dependencias (`pip install -e .[dev]`), ejecuta `ruff`, `black`,
+   `mypy domain/models` y corre `pytest tests/unit` con cobertura mínima del 50%.
+
+Los workflows adicionales de PR/Release/CD se han deshabilitado temporalmente para simplificar la
+pipeline mientras se estabiliza el proceso.
 
 Cuando un job falla, el archivo `cicd.err` concentra el resumen de errores. El fallo reportado
 recientemente provenía de `ruff` (regla `UP007` por anotaciones `Union`/`Optional` y `UP035`

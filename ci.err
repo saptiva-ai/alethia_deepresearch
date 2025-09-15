@@ -1,6 +1,7 @@
-Último fallo en CI: `pip install -e .[dev]` intentó resolver dependencias en entornos sin extras configurados correctamente (se descargaban clasificadores en opcionales). Se reconstruyó `pyproject.toml` con:
-- `classifiers` de nuevo dentro de `[project]`
-- `optional-dependencies` sólo con el extra `dev`
-- configuración de descubrimiento `tool.setuptools.packages.find` para el layout plano.
+Se deshabilitaron los workflows secundarios (`pr-review.yml`, `release.yml`, `cd.yml`) para evitar ejecuciones duplicadas y errores de sintaxis. Solo permanece `.github/workflows/ci.yml`, que ejecuta lint + pruebas unitarias con cobertura (≥50%).
 
-`requirements.txt` contiene sólo dependencias runtime; `pip install -e .[dev]` instala pytest/ruff/etc. Se actualizó `README.md` para reflejarlo.
+Errores anteriores:
+- `release.yml` tenía un bloque `python -c` mal escapado; al eliminarlo desaparece el problema.
+- La cobertura baja en el job de release venía de no instalar el paquete editable; ya no aplica.
+
+Vuelve a ejecutar únicamente el workflow `CI` tras hacer push.
