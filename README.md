@@ -280,40 +280,53 @@ flowchart TB
 
 ### Flujo de investigación
 
+
 ```mermaid
-sequenceDiagram
-    participant Client
-    participant API
-    participant Orchestrator
-    participant Planner
-    participant Researcher
-    participant Evaluator
-    participant Writer
-
-    Client->>API: POST /deep-research
-    API->>Orchestrator: Start deep research
-    Orchestrator->>Planner: Create research plan
-    Planner-->>Orchestrator: Research plan with sub-tasks
-
-    loop For each iteration
-        Orchestrator->>Researcher: Execute research tasks
-        Researcher-->>Orchestrator: Evidence collected
-        Orchestrator->>Evaluator: Evaluate completeness
-        Evaluator-->>Orchestrator: Completion score + gaps
-
-        alt Score < threshold
-            Orchestrator->>Planner: Generate refinement queries
-            Planner-->>Orchestrator: Additional research tasks
-        else Score >= threshold
-            break
-        end
+flowchart TD
+    A[Query Input] --> B[Query Normalization]
+    B --> C[Planning Service]
+    C --> D[Subtask Generation]
+    D --> E[Parallel Research Execution]
+    
+    E --> F[Tavily Search]
+    E --> G[Web Scraping]
+    E --> H[Document Extraction]
+    
+    F --> I[Evidence Collection]
+    G --> I
+    H --> I
+    
+    I --> J[Quality Scoring]
+    J --> K[Vector Embedding]
+    K --> L[Weaviate Storage]
+    
+    L --> M[Evidence Clustering]
+    M --> N[Completeness Evaluation]
+    
+    N --> O{Quality Threshold Met?}
+    O -->|No| P[Gap Analysis]
+    O -->|Yes| Q[Report Synthesis]
+    
+    P --> R[Refinement Queries]
+    R --> E
+    
+    Q --> S[Citation Generation]
+    S --> T[Final Report]
+    T --> U[Artifact Export]
+    
+    subgraph "Quality Control"
+        V[Authority Scoring]
+        W[Recency Weighting]
+        X[Relevance Ranking]
+        Y[Bias Detection]
     end
-
-    Orchestrator->>Writer: Generate final report
-    Writer-->>Orchestrator: Research report
-    Orchestrator-->>API: Task completed
-    API-->>Client: Results available
+    
+    J --> V
+    J --> W
+    J --> X
+    J --> Y
 ```
+
 
 ### Principios de diseño
 
