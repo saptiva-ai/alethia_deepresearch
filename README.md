@@ -1,177 +1,490 @@
 # Aletheia (ἀλήθεια – desocultamiento de la verdad)
 
+[![CI Status](https://github.com/saptiva-ai/alethia_deepresearch/workflows/CI%20-%20Quality%20Checks/badge.svg)](https://github.com/saptiva-ai/alethia_deepresearch/actions)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Aletheia es una plataforma de investigación asistida por agentes que separa claramente el
 *Dominio* de la orquestación y de las integraciones externas. El objetivo del repositorio es
 ofrecer un pipeline reproducible para planear, ejecutar y sintetizar investigaciones
 aprovechando modelos de lenguaje de Saptiva y fuentes externas (Tavily, documentos locales,
 vector stores, etc.).
 
-> **Estado:** proyecto en evolución. Muchas piezas son prototipos y los pipelines de CI pueden
-> fallar si el entorno local no está alineado (por ejemplo, ruff o pytest sin instalar el
-> paquete). Este README describe cómo dejar todo funcionando de forma consistente.
+> **Estado:** ✅ **En producción** - CI/CD pipeline funcional, deployment automatizado, API completamente operativa.
 
 ---
 
-## Qué incluye el repositorio
+## 🚀 Enlaces rápidos
 
-- `apps/api`: aplicación FastAPI que expone endpoints de investigación y salud.
-- `domain`: reglas de negocio (planificación, evaluación, orquestación iterativa y modelos).
-- `adapters`: integraciones concretas (Saptiva, Tavily, extracción de documentos, telemetría,
-  almacenamiento vectorial, etc.).
-- `ports`: interfaces que definen contratos entre el dominio y los adapters.
-- `infra/docker`: docker-compose y scripts para levantar dependencias opcionales (Weaviate,
-  MinIO, Jaeger, etc.).
-- `tests`: suites unitarias e integrales (separadas en `tests/unit` y `tests/integration`).
-- `docs`: material de referencia y diagramas adicionales.
+- **API Docs**: `/docs` (Swagger UI)
+- **Health Check**: `/health`
+- **Deployment**: Ver sección [Deployment](#-deployment)
+- **Architecture**: Ver [diagrama de arquitectura](#-arquitectura)
 
 ---
 
-## Requisitos
+## 📦 Qué incluye el repositorio
 
-- Python 3.11 o superior.
-- `pip` y `virtualenv` para aislar dependencias.
-- Opcional: Tesseract OCR, Docker y Docker Compose si se van a probar los adapters de OCR o
-  el stack completo.
+- **`apps/api`**: Aplicación FastAPI que expone endpoints de investigación y salud
+- **`domain`**: Reglas de negocio (planificación, evaluación, orquestación iterativa y modelos)
+- **`adapters`**: Integraciones concretas (Saptiva, Tavily, extracción de documentos, telemetría, almacenamiento vectorial, etc.)
+- **`ports`**: Interfaces que definen contratos entre el dominio y los adapters
+- **`infra`**: Infraestructura como código (Docker, Kubernetes)
+- **`scripts`**: Scripts de deployment y utilidades de desarrollo
+- **`tests`**: Suites unitarias e integrales (99 tests, cobertura 23%+)
+- **`docs`**: Material de referencia y diagramas adicionales
 
 ---
 
-## Configuración rápida
+## 🛠 Requisitos
 
-1. Clonar el repositorio y crear un entorno virtual:
-   ```bash
-   git clone <repository-url>
-   cd alethia_deepresearch
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\Scripts\activate
-   ```
-2. Instalar dependencias y registrar el paquete en modo editable con extras de desarrollo
-   (evita los errores `ModuleNotFoundError` y trae las herramientas de lint/test):
-   ```bash
+- **Python 3.11+** (requerido para sintaxis moderna de types)
+- **pip** y **virtualenv** para aislar dependencias
+- **Docker** (para deployment y servicios externos)
+- **API Keys**: Saptiva AI y Tavily (ver [Configuración](#%EF%B8%8F-configuración))
+
+### Servicios opcionales
+- **Tesseract OCR** (para extracción de texto de imágenes)
+- **Weaviate** (vector database)
+- **MinIO/S3** (almacenamiento de archivos)
+- **Jaeger** (observabilidad)
+
+---
+
+## ⚡ Configuración rápida
+
+### 1. Clonar y configurar entorno
+
+```bash
+git clone https://github.com/saptiva-ai/alethia_deepresearch.git
+cd alethia_deepresearch
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+```
+
+### 2. Instalar dependencias
+
+```bash
 pip install --upgrade pip
 pip install -r requirements.txt
-pip install -e .[dev]
-   ```
-3. Definir variables de entorno mínimas (puedes partir de `.env.example`):
-   ```bash
-   cp .env.example .env
-   # Edita .env con las llaves de SAPTIVA_API_KEY y TAVILY_API_KEY cuando uses servicios reales
-   ```
+pip install -e .[dev]  # Incluye herramientas de desarrollo
+```
 
----
+### 3. Configurar variables de entorno
 
-## Ejecutar la API local
+```bash
+cp .env.example .env
+```
+
+Edita `.env` con tus API keys:
+
+```bash
+# API Keys (requeridas para funcionalidad completa)
+SAPTIVA_API_KEY=tu_clave_saptiva_aqui
+TAVILY_API_KEY=tu_clave_tavily_aqui
+
+# Configuración opcional
+WEAVIATE_HOST=http://localhost:8080
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+```
+
+### 4. Ejecutar la API
 
 ```bash
 uvicorn apps.api.main:app --reload --port 8000
 ```
 
-Con Docker Compose existe un stack completo en `infra/docker`. Revisa
-`infra/docker/README.md` para levantar únicamente las dependencias o todo el sistema.
+🎉 **API disponible en:** http://localhost:8000/docs
 
 ---
 
-## Pruebas y calidad de código
+## 🧪 Pruebas y calidad de código
 
-Las GitHub Actions ejecutan los mismos pasos. Reprodúcelos localmente antes de subir cambios:
+El proyecto mantiene estándares altos de calidad con CI/CD automatizado:
+
+### Ejecutar todas las verificaciones
 
 ```bash
-# Formato y estilo
+# Linting y formato
 ruff check .
-black --check .
+ruff check . --fix  # Auto-fix issues
 
-# Tipado estático
+# Type checking
 mypy domain/models --ignore-missing-imports
 
-# Pruebas unitarias con cobertura (requiere pip install -e .[dev])
-# El pipeline actual valida un mínimo de 50% de cobertura.
+# Tests unitarios (99 tests)
 pytest tests/unit/ -v --cov=domain --cov=adapters --cov=apps --cov-report=term-missing
 
-# Pruebas de integración (requiere Weaviate activo, ver docker-compose)
+# Tests de integración (requiere servicios externos)
 pytest tests/integration/ -v
 ```
 
-Bandit y Safety también forman parte del pipeline (`bandit -r domain/ adapters/ apps/` y
-`safety check`). Ambos se permiten fallar en CI, pero conviene revisar los reportes generados en
-`bandit-report.json` y `safety-report.json` cuando existan hallazgos.
+### Pipeline CI/CD
+
+- ✅ **Linting**: Ruff + Black formatting
+- ✅ **Type checking**: MyPy validation
+- ✅ **Testing**: 99 unit tests with 23%+ coverage
+- ✅ **Security**: Bandit + Safety checks
+- ✅ **Build**: Multi-stage Docker builds
+- ✅ **Deployment**: Automated to staging/production
+
+Ver `.github/workflows/ci.yml` para detalles completos.
 
 ---
 
-## Pipeline CI/CD (GitHub Actions)
+## 🚀 Deployment
 
-Archivo principal: `.github/workflows/ci.yml`.
+### Opciones de deployment
 
-1. **Lint & Tests**: instala dependencias (`pip install -e .[dev]`), ejecuta `ruff`, `black`,
-   `mypy domain/models` y corre `pytest tests/unit` con cobertura mínima del 50%.
+1. **[Servidor interno via SSH](#deployment-remoto-ssh)** ✅ **Recomendado**
+2. **[Docker local](#deployment-docker-local)**
+3. **[Kubernetes](#deployment-kubernetes)**
+4. **[GitHub Actions CD](#deployment-github-actions)**
 
-Los workflows adicionales de PR/Release/CD se han deshabilitado temporalmente para simplificar la
-pipeline mientras se estabiliza el proceso.
+### Deployment remoto (SSH)
 
-Cuando un job falla, el archivo `cicd.err` concentra el resumen de errores. El fallo reportado
-recientemente provenía de `ruff` (regla `UP007` por anotaciones `Union`/`Optional` y `UP035`
-por tipos de `typing`). Ajusta las anotaciones a la sintaxis de Python 3.11 (`str | Path`,
-`list[...]`, etc.) y vuelve a ejecutar `ruff check adapters/extractor/pdf_extractor.py` para
-confirmar.
+Para servidores internos con acceso SSH:
 
----
+```bash
+# 1. Configurar servidor (una sola vez)
+./scripts/deployment/setup-server.sh
 
-## Arquitectura (vista rápida)
+# 2. Desplegar aplicación
+./scripts/deployment/deploy-remote.sh --verbose
 
-El dominio se mantiene independiente de frameworks y proveedores externos. Los adapters se
-registran a través de puertos, lo que simplifica sustituir proveedores o ejecutar el sistema en
-modos degradados.
+# 3. Verificar deployment
+curl http://YOUR_SERVER_IP:8000/health
+```
 
-```mermaid
-flowchart LR
-  subgraph Domain[Dominio]
-    T(ResearchTask)
-    Plan
-    Evidence
-    Citation
-    Report
-    P[Planner]
-    R[Researcher]
-    C[Curator]
-    F[FactChecker]
-    W[Writer]
-    X[Critic]
-  end
+### Deployment Docker local
 
-  subgraph Ports[Ports]
-    MP[ModelClientPort]
-    SP[SearchPort]
-    VP[VectorStorePort]
-    BP[BrowserPort]
-    DP[DocExtractPort]
-    GP[GuardPort]
-    LP[LoggingPort]
-    STP[StoragePort]
-  end
+```bash
+# Build y deploy local
+./scripts/deployment/deploy-docker.sh \
+  --environment production \
+  --tag latest \
+  --port 8000
+```
 
-  subgraph Adapters[Adapters]
-    MA[Saptiva Model Client]
-    TA[Tavily API]
-    WA[Weaviate DB]
-    SA[Multimodal Web Surfer]
-    DA[PDF/OCR Extractor]
-    GA[Saptiva Guard]
-    OA[OpenTelemetry + Event Logs]
-    FS[MinIO/S3/FS]
-  end
+### Deployment Kubernetes
 
-  Domain --> Ports
-  Ports --> Adapters
+```bash
+# Deploy a diferentes entornos
+./scripts/deployment/deploy.sh --environment development
+./scripts/deployment/deploy.sh --environment staging --tag v1.2.3
+./scripts/deployment/deploy.sh --environment production --tag v1.2.3 --dry-run
+```
+
+### Configuración de producción
+
+Para deployment en producción, configura estas variables:
+
+```bash
+# .env.production
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=WARNING
+
+# API Keys (requeridas)
+SAPTIVA_API_KEY=your_production_key
+TAVILY_API_KEY=your_production_key
+
+# Performance
+API_WORKERS=4
+MAX_CONCURRENT_REQUESTS=100
+REQUEST_TIMEOUT=600
+
+# Monitoring
+ENABLE_TELEMETRY=true
+METRICS_ENABLED=true
 ```
 
 ---
 
-## Recursos adicionales
+## 📡 API Endpoints
 
-- `docs/`: notas de diseño y ejemplos ampliados.
-- `scripts/`: utilidades para crear planes, depurar o importar datos.
-- Issues/discusiones: usa GitHub para coordinar trabajo pendiente (roadmap, bugs, etc.).
+### Core Research Endpoints
+
+| Endpoint | Method | Descripción |
+|----------|--------|-------------|
+| `/health` | GET | Health check con status de APIs |
+| `/research` | POST | Investigación simple optimizada |
+| `/deep-research` | POST | Investigación profunda iterativa |
+| `/tasks/{task_id}/status` | GET | Estado de tarea en curso |
+| `/reports/{task_id}` | GET | Reporte final generado |
+| `/traces/{task_id}` | GET | Trazas de telemetría |
+
+### Ejemplo de uso
+
+```bash
+# Investigación simple
+curl -X POST "http://localhost:8000/research" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Latest AI trends 2024"}'
+
+# Respuesta
+{
+  "task_id": "abc-123-def",
+  "status": "accepted",
+  "details": "Research task accepted with parallel processing"
+}
+
+# Verificar estado
+curl "http://localhost:8000/tasks/abc-123-def/status"
+```
 
 ---
 
-## Licencia
+## 🏗 Arquitectura
 
-MIT. Consulta `LICENSE` para más detalles.
+### Vista general
+
+```mermaid
+flowchart TB
+    subgraph API[FastAPI Application]
+        E[Endpoints]
+        M[Middleware]
+        H[Health Checks]
+    end
+
+    subgraph Domain[Domain Layer]
+        T[ResearchTask]
+        Plan[Planning Service]
+        Research[Research Service]
+        Eval[Evaluation Service]
+        Orchestrator[Iterative Orchestrator]
+        Writer[Writer Service]
+    end
+
+    subgraph Ports[Port Interfaces]
+        ModelPort[Model Client Port]
+        SearchPort[Search Port]
+        VectorPort[Vector Store Port]
+        ExtractPort[Document Extract Port]
+        GuardPort[Guard Port]
+    end
+
+    subgraph Adapters[External Integrations]
+        Saptiva[Saptiva AI Models]
+        Tavily[Tavily Search API]
+        Weaviate[Weaviate Vector DB]
+        PDFExtract[PDF/OCR Extractor]
+        Telemetry[OpenTelemetry]
+    end
+
+    API --> Domain
+    Domain --> Ports
+    Ports --> Adapters
+```
+
+### Flujo de investigación
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant API
+    participant Orchestrator
+    participant Planner
+    participant Researcher
+    participant Evaluator
+    participant Writer
+
+    Client->>API: POST /deep-research
+    API->>Orchestrator: Start deep research
+    Orchestrator->>Planner: Create research plan
+    Planner-->>Orchestrator: Research plan with sub-tasks
+
+    loop For each iteration
+        Orchestrator->>Researcher: Execute research tasks
+        Researcher-->>Orchestrator: Evidence collected
+        Orchestrator->>Evaluator: Evaluate completeness
+        Evaluator-->>Orchestrator: Completion score + gaps
+
+        alt Score < threshold
+            Orchestrator->>Planner: Generate refinement queries
+            Planner-->>Orchestrator: Additional research tasks
+        else Score >= threshold
+            break
+        end
+    end
+
+    Orchestrator->>Writer: Generate final report
+    Writer-->>Orchestrator: Research report
+    Orchestrator-->>API: Task completed
+    API-->>Client: Results available
+```
+
+### Principios de diseño
+
+- **🏛 Clean Architecture**: Separación clara entre dominio, puertos y adapters
+- **🔌 Dependency Inversion**: Abstracciones estables, implementaciones intercambiables
+- **🧪 Testability**: 99 unit tests, mocking de dependencias externas
+- **📊 Observability**: OpenTelemetry integration, structured logging
+- **⚡ Performance**: Procesamiento paralelo, optimizaciones asíncronas
+- **🛡 Resilience**: Graceful degradation, retry mechanisms
+
+---
+
+## 🔧 Desarrollo
+
+### Estructura del proyecto
+
+```
+alethia_deepresearch/
+├── apps/                    # FastAPI application
+│   └── api/
+├── domain/                  # Business logic (clean architecture)
+│   ├── models/             # Domain models
+│   └── services/           # Domain services
+├── adapters/               # External integrations
+│   ├── saptiva_model/      # Saptiva AI integration
+│   ├── tavily_search/      # Tavily search integration
+│   ├── weaviate_vector/    # Vector database
+│   └── telemetry/          # Observability
+├── ports/                  # Interface contracts
+├── tests/                  # Test suites
+│   ├── unit/              # Unit tests (99 tests)
+│   └── integration/       # Integration tests
+├── scripts/               # Deployment & utility scripts
+│   └── deployment/        # Deployment automation
+├── infra/                 # Infrastructure as code
+│   ├── docker/           # Docker Compose
+│   └── k8s/              # Kubernetes manifests
+└── docs/                  # Documentation
+```
+
+### Scripts útiles
+
+```bash
+# Development
+./scripts/development/setup.sh        # Setup desarrollo local
+./scripts/development/test.sh         # Run full test suite
+
+# Deployment
+./scripts/deployment/setup-server.sh  # Configurar servidor remoto
+./scripts/deployment/deploy-remote.sh # Deploy via SSH
+./scripts/deployment/deploy-docker.sh # Deploy local Docker
+
+# Utilities
+./scripts/utils/health-check.sh       # Verificar salud del sistema
+./scripts/utils/backup.sh             # Backup de datos
+```
+
+### Configuración de desarrollo
+
+```bash
+# Pre-commit hooks (recomendado)
+pip install pre-commit
+pre-commit install
+
+# Variables de desarrollo
+export DEBUG=true
+export LOG_LEVEL=DEBUG
+export ENVIRONMENT=development
+```
+
+---
+
+## 📊 Monitoreo y observabilidad
+
+### Health checks
+
+```bash
+# Health endpoint básico
+curl http://localhost:8000/health
+
+# Respuesta
+{
+  "status": "healthy",
+  "service": "Aletheia Deep Research API",
+  "version": "0.2.0",
+  "api_keys": {
+    "saptiva_available": true,
+    "tavily_available": true
+  },
+  "timestamp": 1757976601.2687306
+}
+```
+
+### Logs estructurados
+
+- **Formato**: JSON structured logging
+- **Niveles**: DEBUG, INFO, WARNING, ERROR
+- **Correlación**: Task IDs para tracking
+- **Telemetría**: OpenTelemetry integration
+
+### Métricas disponibles
+
+- Request/response times
+- API success/failure rates
+- Task completion rates
+- Evidence collection metrics
+- Resource utilization
+
+---
+
+## 🤝 Contribuir
+
+### Workflow de desarrollo
+
+1. **Fork** el repositorio
+2. **Crear branch** para feature/fix: `git checkout -b feature/amazing-feature`
+3. **Commit** cambios: `git commit -m 'Add amazing feature'`
+4. **Push** a branch: `git push origin feature/amazing-feature`
+5. **Crear Pull Request**
+
+### Estándares de código
+
+- ✅ **Linting**: Código debe pasar `ruff check`
+- ✅ **Format**: Usar `ruff check --fix` para auto-format
+- ✅ **Types**: Type hints obligatorios
+- ✅ **Tests**: Tests unitarios para nuevas features
+- ✅ **Docs**: Actualizar README.md si es necesario
+
+### Revisión de código
+
+- CI/CD debe pasar (99 tests, linting, security)
+- Revisión por al menos 1 maintainer
+- Documentación actualizada si aplica
+
+---
+
+## 📚 Recursos adicionales
+
+- **[Documentación completa](docs/)**: Guías detalladas y ejemplos
+- **[API Reference](http://localhost:8000/docs)**: Swagger UI interactivo
+- **[Architecture Deep Dive](docs/architecture.md)**: Decisiones de diseño
+- **[Deployment Guide](docs/deployment.md)**: Guía completa de deployment
+- **[Contributing Guide](docs/contributing.md)**: Guía para contribuidores
+
+### Enlaces útiles
+
+- **Issues**: [GitHub Issues](https://github.com/saptiva-ai/alethia_deepresearch/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/saptiva-ai/alethia_deepresearch/discussions)
+- **Releases**: [GitHub Releases](https://github.com/saptiva-ai/alethia_deepresearch/releases)
+
+---
+
+## 📄 Licencia
+
+MIT License - ver [LICENSE](LICENSE) para más detalles.
+
+---
+
+## 🙏 Agradecimientos
+
+- **Saptiva AI** - Modelos de lenguaje de vanguardia
+- **Tavily** - Search API para investigación
+- **FastAPI** - Framework web moderno y rápido
+- **Weaviate** - Vector database escalable
+
+---
+
+<div align="center">
+
+**¿Encontraste útil este proyecto? ⭐ Danos una estrella!**
+
+[Reportar Bug](https://github.com/saptiva-ai/alethia_deepresearch/issues) · [Solicitar Feature](https://github.com/saptiva-ai/alethia_deepresearch/issues) · [Documentación](docs/)
+
+</div>
