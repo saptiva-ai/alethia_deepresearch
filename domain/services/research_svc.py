@@ -1,7 +1,6 @@
 import asyncio
-import hashlib
 from concurrent.futures import ThreadPoolExecutor
-from typing import List
+import hashlib
 
 from adapters.tavily_search.tavily_client import TavilySearchAdapter
 from adapters.weaviate_vector.weaviate_adapter import WeaviateVectorAdapter
@@ -29,7 +28,7 @@ class ResearchService:
         else:
             print("Weaviate not available - using mock vector storage.")
 
-    def execute_plan(self, plan: ResearchPlan) -> List[Evidence]:
+    def execute_plan(self, plan: ResearchPlan) -> list[Evidence]:
         """
         Executes the research plan by searching for evidence for each sub-task.
         Now stores evidence in vector database for RAG.
@@ -64,7 +63,7 @@ class ResearchService:
         print(f"Research completed. Stored {len(all_evidence)} pieces of evidence in collection {collection_name}")
         return all_evidence
 
-    async def execute_plan_parallel(self, plan: ResearchPlan) -> List[Evidence]:
+    async def execute_plan_parallel(self, plan: ResearchPlan) -> list[Evidence]:
         """
         Executes the research plan with parallel search processing for improved performance.
         Uses asyncio and ThreadPoolExecutor to run searches concurrently.
@@ -79,7 +78,7 @@ class ResearchService:
 
         # Filter tasks that need web search
         web_tasks = [task for task in plan.sub_tasks if "web" in task.sources]
-        
+
         if not web_tasks:
             print("No web search tasks found in plan")
             return []
@@ -89,18 +88,13 @@ class ResearchService:
         # Execute searches in parallel
         with ThreadPoolExecutor(max_workers=min(len(web_tasks), 5)) as executor:
             # Submit all search tasks concurrently
-            search_futures = [
-                executor.submit(self._execute_single_search_task, task)
-                for task in web_tasks
-            ]
+            search_futures = [executor.submit(self._execute_single_search_task, task) for task in web_tasks]
 
             # Collect results as they complete
             all_evidence = []
             completed_tasks = 0
-            
-            for future in asyncio.as_completed([
-                asyncio.wrap_future(f) for f in search_futures
-            ]):
+
+            for future in asyncio.as_completed([asyncio.wrap_future(f) for f in search_futures]):
                 try:
                     task_evidence = await future
                     all_evidence.extend(task_evidence)
@@ -116,35 +110,30 @@ class ResearchService:
         print(f"🎉 Parallel research completed. Stored {len(all_evidence)} pieces of evidence in collection {collection_name}")
         return all_evidence
 
-    def _execute_single_search_task(self, task) -> List[Evidence]:
+    def _execute_single_search_task(self, task) -> list[Evidence]:
         """Execute a single search task synchronously."""
         print(f"🔍 Searching: {task.query}")
         search_results = self.search_adapter.search(query=task.query)
-        
+
         evidence_list = []
         for result in search_results:
             # Update tool_call_id to track which task it came from
             result.tool_call_id = f"tavily:{task.id}"
             evidence_list.append(result)
-        
+
         return evidence_list
 
-    async def _store_evidence_batch(self, evidence_list: List[Evidence], collection_name: str):
+    async def _store_evidence_batch(self, evidence_list: list[Evidence], collection_name: str):
         """Store evidence items in vector database using batch processing."""
         if not evidence_list:
             return
 
         # Use ThreadPoolExecutor for parallel storage operations
         with ThreadPoolExecutor(max_workers=3) as executor:
-            storage_futures = [
-                executor.submit(self.vector_store.store_evidence, evidence, collection_name)
-                for evidence in evidence_list
-            ]
+            storage_futures = [executor.submit(self.vector_store.store_evidence, evidence, collection_name) for evidence in evidence_list]
 
             stored_count = 0
-            for future in asyncio.as_completed([
-                asyncio.wrap_future(f) for f in storage_futures
-            ]):
+            for future in asyncio.as_completed([asyncio.wrap_future(f) for f in storage_futures]):
                 try:
                     stored = await future
                     if stored:
@@ -154,7 +143,7 @@ class ResearchService:
 
             print(f"📦 Batch storage completed: {stored_count}/{len(evidence_list)} items stored")
 
-    def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
+    def search_existing_evidence(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
         """
         Search for existing evidence in the vector store using semantic similarity.
         """
@@ -162,8 +151,7 @@ class ResearchService:
 
     def _generate_collection_id(self, main_query: str) -> str:
         """Generate a unique collection ID based on the main query."""
-        hash_obj = hashlib.md5(main_query.encode())
-        return hash_obj.hexdigest()[:8]
+        return hashlib.sha256(main_query.encode()).hexdigest()[:8]
 
     def _generate_hash(self, content: str) -> str:
         """Generate a hash for content deduplication."""

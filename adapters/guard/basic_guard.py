@@ -1,11 +1,12 @@
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 import urllib.parse
 
 from ports.guard_port import GuardAction, GuardPort, GuardResult
 
 logger = logging.getLogger(__name__)
+
 
 class BasicGuardAdapter(GuardPort):
     """Basic security and content filtering implementation."""
@@ -17,26 +18,41 @@ class BasicGuardAdapter(GuardPort):
             "phone": re.compile(r"\b\d{3}-?\d{3}-?\d{4}\b"),
             "ssn": re.compile(r"\b\d{3}-\d{2}-\d{4}\b"),
             "credit_card": re.compile(r"\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b"),
-            "ip_address": re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
+            "ip_address": re.compile(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b"),
         }
 
         # Basic toxicity keywords (simple implementation)
         self.toxic_keywords = [
-            "attack", "hack", "exploit", "malware", "virus", "phishing",
-            "scam", "fraud", "steal", "illegal", "criminal", "terrorist"
+            "attack",
+            "hack",
+            "exploit",
+            "malware",
+            "virus",
+            "phishing",
+            "scam",
+            "fraud",
+            "steal",
+            "illegal",
+            "criminal",
+            "terrorist",
         ]
 
         # Allowed domains list (example)
         self.allowed_domains = [
-            "wikipedia.org", "github.com", "stackoverflow.com", "arxiv.org",
-            "scholar.google.com", "pubmed.ncbi.nlm.nih.gov", "nature.com",
-            "sciencedirect.com", "ieee.org", "acm.org"
+            "wikipedia.org",
+            "github.com",
+            "stackoverflow.com",
+            "arxiv.org",
+            "scholar.google.com",
+            "pubmed.ncbi.nlm.nih.gov",
+            "nature.com",
+            "sciencedirect.com",
+            "ieee.org",
+            "acm.org",
         ]
 
         # Blocked domains list (example)
-        self.blocked_domains = [
-            "malicious-site.com", "phishing-example.com"
-        ]
+        self.blocked_domains = ["malicious-site.com", "phishing-example.com"]
 
     def check_content(self, content: str, context: str = "") -> GuardResult:
         """Check content for security, safety, and policy violations."""
@@ -63,14 +79,10 @@ class BasicGuardAdapter(GuardPort):
                 action=action,
                 confidence=max_confidence,
                 reason="; ".join(violations),
-                filtered_content=self.filter_content(content, ["pii"]) if action == GuardAction.FILTER else None
+                filtered_content=self.filter_content(content, ["pii"]) if action == GuardAction.FILTER else None,
             )
 
-        return GuardResult(
-            action=GuardAction.ALLOW,
-            confidence=1.0,
-            reason="Content passed all security checks"
-        )
+        return GuardResult(action=GuardAction.ALLOW, confidence=1.0, reason="Content passed all security checks")
 
     def check_pii(self, content: str) -> GuardResult:
         """Check for personally identifiable information (PII)."""
@@ -86,14 +98,10 @@ class BasicGuardAdapter(GuardPort):
                 action=GuardAction.FILTER,
                 confidence=0.9,
                 reason=f"PII detected: {', '.join(detected_pii)}",
-                filtered_content=self.redact_pii(content)
+                filtered_content=self.redact_pii(content),
             )
 
-        return GuardResult(
-            action=GuardAction.ALLOW,
-            confidence=0.8,
-            reason="No PII detected"
-        )
+        return GuardResult(action=GuardAction.ALLOW, confidence=0.8, reason="No PII detected")
 
     def check_toxicity(self, content: str) -> GuardResult:
         """Check for toxic or harmful content."""
@@ -109,14 +117,10 @@ class BasicGuardAdapter(GuardPort):
             return GuardResult(
                 action=GuardAction.WARN if len(detected_keywords) <= 2 else GuardAction.BLOCK,
                 confidence=confidence,
-                reason=f"Potentially toxic content detected: {', '.join(detected_keywords)}"
+                reason=f"Potentially toxic content detected: {', '.join(detected_keywords)}",
             )
 
-        return GuardResult(
-            action=GuardAction.ALLOW,
-            confidence=0.7,
-            reason="No toxic content detected"
-        )
+        return GuardResult(action=GuardAction.ALLOW, confidence=0.7, reason="No toxic content detected")
 
     def check_url_safety(self, url: str) -> GuardResult:
         """Check if a URL is safe to access."""
@@ -134,26 +138,18 @@ class BasicGuardAdapter(GuardPort):
                     return GuardResult(
                         action=GuardAction.BLOCK,
                         confidence=0.95,
-                        reason=f"URL domain {domain} is blocked"
+                        reason=f"URL domain {domain} is blocked",
                     )
 
             # Check against allowed domains (if using allowlist approach)
             # For now, we'll be permissive and only block known bad domains
 
-            return GuardResult(
-                action=GuardAction.ALLOW,
-                confidence=0.8,
-                reason="URL appears safe"
-            )
+            return GuardResult(action=GuardAction.ALLOW, confidence=0.8, reason="URL appears safe")
 
         except Exception as e:
-            return GuardResult(
-                action=GuardAction.WARN,
-                confidence=0.6,
-                reason=f"Could not parse URL: {e}"
-            )
+            return GuardResult(action=GuardAction.WARN, confidence=0.6, reason=f"Could not parse URL: {e}")
 
-    def filter_content(self, content: str, filters: List[str]) -> str:
+    def filter_content(self, content: str, filters: list[str]) -> str:
         """Apply content filters to text."""
         filtered_content = content
 
@@ -163,7 +159,7 @@ class BasicGuardAdapter(GuardPort):
 
         return filtered_content
 
-    def redact_pii(self, content: str, pii_types: Optional[List[str]] = None) -> str:
+    def redact_pii(self, content: str, pii_types: list[str | None] = None) -> str:
         """Redact PII from content."""
         redacted_content = content
 
@@ -192,15 +188,14 @@ class BasicGuardAdapter(GuardPort):
             domain = domain[4:]
 
         # Check if domain is explicitly blocked
-        for blocked in self.blocked_domains:
-            if domain == blocked or domain.endswith(f".{blocked}"):
-                return False
+        if any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self.blocked_domains):
+            return False
 
         # For now, allow all domains except blocked ones
         # In a production system, you might want to implement an allowlist
         return True
 
-    def get_policy_violations(self, content: str) -> List[Dict[str, Any]]:
+    def get_policy_violations(self, content: str) -> list[dict[str, Any]]:
         """Get detailed policy violations found in content."""
         violations = []
 
@@ -208,24 +203,28 @@ class BasicGuardAdapter(GuardPort):
         for pii_type, pattern in self.pii_patterns.items():
             matches = pattern.findall(content)
             if matches:
-                violations.append({
-                    "type": "pii",
-                    "subtype": pii_type,
-                    "severity": "medium",
-                    "count": len(matches),
-                    "description": f"{pii_type.upper()} detected in content"
-                })
+                violations.append(
+                    {
+                        "type": "pii",
+                        "subtype": pii_type,
+                        "severity": "medium",
+                        "count": len(matches),
+                        "description": f"{pii_type.upper()} detected in content",
+                    }
+                )
 
         # Check toxicity violations
         detected_keywords = [kw for kw in self.toxic_keywords if kw in content.lower()]
         if detected_keywords:
-            violations.append({
-                "type": "toxicity",
-                "subtype": "keywords",
-                "severity": "high" if len(detected_keywords) > 2 else "medium",
-                "keywords": detected_keywords,
-                "description": "Potentially toxic keywords detected"
-            })
+            violations.append(
+                {
+                    "type": "toxicity",
+                    "subtype": "keywords",
+                    "severity": "high" if len(detected_keywords) > 2 else "medium",
+                    "keywords": detected_keywords,
+                    "description": "Potentially toxic keywords detected",
+                }
+            )
 
         return violations
 

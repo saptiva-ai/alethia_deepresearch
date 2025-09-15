@@ -2,12 +2,13 @@ from datetime import datetime
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 # PDF processing libraries
 try:
     import pdfplumber
     import PyPDF2
+
     PDF_AVAILABLE = True
 except ImportError:
     PDF_AVAILABLE = False
@@ -16,6 +17,7 @@ except ImportError:
 try:
     from PIL import Image
     import pytesseract
+
     OCR_AVAILABLE = True
 except ImportError:
     OCR_AVAILABLE = False
@@ -23,6 +25,7 @@ except ImportError:
 # Word document processing
 try:
     from docx import Document
+
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
@@ -31,6 +34,7 @@ from domain.models.evidence import Evidence, EvidenceSource
 from ports.doc_extract_port import DocExtractPort
 
 logger = logging.getLogger(__name__)
+
 
 class PDFExtractorAdapter(DocExtractPort):
     """PDF and document extraction adapter implementing DocExtractPort."""
@@ -45,9 +49,12 @@ class PDFExtractorAdapter(DocExtractPort):
         if DOCX_AVAILABLE:
             self.supported_extensions.extend([".docx"])
 
-        logger.info(f"PDFExtractorAdapter initialized. Supported formats: {self.supported_extensions}")
+        logger.info(
+            "PDFExtractorAdapter initialized. Supported formats: %s",
+            self.supported_extensions,
+        )
 
-    def extract_text_from_pdf(self, file_path: Union[str, Path]) -> Optional[str]:
+    def extract_text_from_pdf(self, file_path: str | Path) -> str | None:
         """Extract text content from a PDF file."""
         if not PDF_AVAILABLE:
             logger.error("PDF extraction not available. Install PyPDF2 and pdfplumber.")
@@ -87,7 +94,7 @@ class PDFExtractorAdapter(DocExtractPort):
             logger.error(f"Error extracting text from PDF {file_path}: {e}")
             return None
 
-    def extract_text_from_image(self, file_path: Union[str, Path]) -> Optional[str]:
+    def extract_text_from_image(self, file_path: str | Path) -> str | None:
         """Extract text from an image using OCR."""
         if not OCR_AVAILABLE:
             logger.error("OCR not available. Install pytesseract and Pillow.")
@@ -107,7 +114,7 @@ class PDFExtractorAdapter(DocExtractPort):
             logger.error(f"Error extracting text from image {file_path}: {e}")
             return None
 
-    def extract_text_from_docx(self, file_path: Union[str, Path]) -> Optional[str]:
+    def extract_text_from_docx(self, file_path: str | Path) -> str | None:
         """Extract text content from a Word document."""
         if not DOCX_AVAILABLE:
             logger.error("DOCX extraction not available. Install python-docx.")
@@ -132,7 +139,11 @@ class PDFExtractorAdapter(DocExtractPort):
             logger.error(f"Error extracting text from DOCX {file_path}: {e}")
             return None
 
-    def extract_evidence_from_document(self, file_path: Union[str, Path], context: str = "") -> List[Evidence]:
+    def extract_evidence_from_document(
+        self,
+        file_path: str | Path,
+        context: str = "",
+    ) -> list[Evidence]:
         """Extract structured evidence from a document."""
         file_path = Path(file_path)
         text_content = None
@@ -155,20 +166,21 @@ class PDFExtractorAdapter(DocExtractPort):
 
         # Split content into chunks and create evidence objects
         chunks = self.split_document_content(text_content)
-        evidence_list = []
+        evidence_list: list[Evidence] = []
 
         for i, chunk in enumerate(chunks):
             if len(chunk.strip()) < 50:  # Skip very short chunks
                 continue
 
             # Create evidence ID
-            evidence_id = f"doc_{hashlib.md5(f'{file_path}_{i}'.encode()).hexdigest()[:8]}"
+            hash_suffix = hashlib.sha256(f"{file_path}_{i}".encode()).hexdigest()[:8]
+            evidence_id = f"doc_{hash_suffix}"
 
             # Create evidence source
             source = EvidenceSource(
                 url=f"file://{file_path.absolute()}",
                 title=file_path.name,
-                fetched_at=datetime.utcnow()
+                fetched_at=datetime.utcnow(),
             )
 
             # Create evidence object
@@ -179,20 +191,20 @@ class PDFExtractorAdapter(DocExtractPort):
                 tool_call_id=f"extract:doc:{evidence_id}",
                 score=0.9,  # High confidence for directly extracted content
                 tags=["document", "extracted", suffix[1:]],  # Remove the dot from extension
-                cit_key=f"Doc{file_path.stem}_{i+1}"
+                cit_key=f"Doc{file_path.stem}_{i+1}",
             )
             evidence_list.append(evidence)
 
         return evidence_list
 
-    def extract_metadata(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+    def extract_metadata(self, file_path: str | Path) -> dict[str, Any]:
         """Extract metadata from a document."""
         file_path = Path(file_path)
         metadata = {
             "filename": file_path.name,
             "file_size": file_path.stat().st_size if file_path.exists() else 0,
             "file_extension": file_path.suffix.lower(),
-            "modified_date": datetime.fromtimestamp(file_path.stat().st_mtime) if file_path.exists() else None
+            "modified_date": (datetime.fromtimestamp(file_path.stat().st_mtime) if file_path.exists() else None),
         }
 
         # Add format-specific metadata
@@ -200,23 +212,25 @@ class PDFExtractorAdapter(DocExtractPort):
             try:
                 with open(file_path, "rb") as file:
                     pdf_reader = PyPDF2.PdfReader(file)
-                    metadata.update({
-                        "page_count": len(pdf_reader.pages),
-                        "pdf_info": pdf_reader.metadata._data if pdf_reader.metadata else {}
-                    })
+                    metadata.update(
+                        {
+                            "page_count": len(pdf_reader.pages),
+                            "pdf_info": pdf_reader.metadata._data if pdf_reader.metadata else {},
+                        }
+                    )
             except Exception as e:
                 logger.warning(f"Could not extract PDF metadata: {e}")
 
         return metadata
 
-    def convert_to_pdf(self, file_path: Union[str, Path], output_path: Union[str, Path]) -> bool:
+    def convert_to_pdf(self, file_path: str | Path, output_path: str | Path) -> bool:
         """Convert a document to PDF format."""
         # This is a placeholder implementation
         # In practice, you would use libraries like python-docx2pdf or similar
         logger.warning("PDF conversion not implemented in this basic version")
         return False
 
-    def split_document(self, file_path: Union[str, Path], chunk_size: int = 1000) -> List[str]:
+    def split_document(self, file_path: str | Path, chunk_size: int = 1000) -> list[str]:
         """Split a document into chunks for processing."""
         text_content = None
         file_path = Path(file_path)
@@ -235,14 +249,14 @@ class PDFExtractorAdapter(DocExtractPort):
 
         return self.split_document_content(text_content, chunk_size)
 
-    def split_document_content(self, content: str, chunk_size: int = 1000) -> List[str]:
+    def split_document_content(self, content: str, chunk_size: int = 1000) -> list[str]:
         """Split text content into chunks."""
         if not content:
             return []
 
         # Simple chunking by sentences, then by words if needed
         sentences = content.split(". ")
-        chunks = []
+        chunks: list[str] = []
         current_chunk = ""
 
         for sentence in sentences:
@@ -258,7 +272,7 @@ class PDFExtractorAdapter(DocExtractPort):
 
         return chunks
 
-    def supported_formats(self) -> List[str]:
+    def supported_formats(self) -> list[str]:
         """Get list of supported document formats."""
         return self.supported_extensions
 
@@ -267,7 +281,7 @@ class PDFExtractorAdapter(DocExtractPort):
         checks = {
             "pdf_available": PDF_AVAILABLE,
             "ocr_available": OCR_AVAILABLE,
-            "docx_available": DOCX_AVAILABLE
+            "docx_available": DOCX_AVAILABLE,
         }
 
         # Consider healthy if at least one format is supported

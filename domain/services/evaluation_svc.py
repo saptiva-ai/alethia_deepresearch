@@ -1,6 +1,5 @@
 import json
 import os
-from typing import List
 
 from adapters.saptiva_model.saptiva_client import SaptivaModelAdapter
 from domain.models.evaluation import (
@@ -23,7 +22,7 @@ class EvaluationService:
         # Use Saptiva Cortex for evaluation (analytical tasks)
         self.evaluation_model = os.getenv("SAPTIVA_MODEL_WRITER", "Saptiva Cortex")
 
-    def evaluate_research_completeness(self, query: str, evidence: List[Evidence]) -> CompletionScore:
+    def evaluate_research_completeness(self, query: str, evidence: list[Evidence]) -> CompletionScore:
         """
         Evaluates completeness of research using Together AI pattern.
         """
@@ -33,27 +32,22 @@ class EvaluationService:
             model=self.evaluation_model,
             prompt=prompt,
             temperature=0.3,  # Lower temperature for analytical tasks
-            max_tokens=1500
+            max_tokens=1500,
         )
 
         return self._parse_evaluation_response(response.get("content", ""))
 
-    def identify_information_gaps(self, query: str, evidence: List[Evidence]) -> List[InformationGap]:
+    def identify_information_gaps(self, query: str, evidence: list[Evidence]) -> list[InformationGap]:
         """
         Identifies specific information gaps in research coverage.
         """
         prompt = self._build_gap_analysis_prompt(query, evidence)
 
-        response = self.model_adapter.generate(
-            model=self.evaluation_model,
-            prompt=prompt,
-            temperature=0.2,
-            max_tokens=1000
-        )
+        response = self.model_adapter.generate(model=self.evaluation_model, prompt=prompt, temperature=0.2, max_tokens=1000)
 
         return self._parse_gaps_response(response.get("content", ""))
 
-    def generate_refinement_queries(self, gaps: List[InformationGap], original_query: str) -> List[RefinementQuery]:
+    def generate_refinement_queries(self, gaps: list[InformationGap], original_query: str) -> list[RefinementQuery]:
         """
         Generates targeted follow-up queries to address identified gaps.
         """
@@ -63,12 +57,12 @@ class EvaluationService:
             model=self.evaluation_model,
             prompt=prompt,
             temperature=0.4,  # Slightly higher for creative query generation
-            max_tokens=800
+            max_tokens=800,
         )
 
         return self._parse_refinement_response(response.get("content", ""))
 
-    def _build_evaluation_prompt(self, query: str, evidence: List[Evidence]) -> str:
+    def _build_evaluation_prompt(self, query: str, evidence: list[Evidence]) -> str:
         """Build prompt for research completeness evaluation."""
         evidence_summary = self._summarize_evidence(evidence)
 
@@ -104,7 +98,7 @@ Focus on:
 Provide your evaluation:
 """
 
-    def _build_gap_analysis_prompt(self, query: str, evidence: List[Evidence]) -> str:
+    def _build_gap_analysis_prompt(self, query: str, evidence: list[Evidence]) -> str:
         """Build prompt for gap identification."""
         evidence_summary = self._summarize_evidence(evidence)
 
@@ -139,12 +133,9 @@ Look for gaps in:
 Provide 3-7 specific gaps:
 """
 
-    def _build_refinement_prompt(self, gaps: List[InformationGap], original_query: str) -> str:
+    def _build_refinement_prompt(self, gaps: list[InformationGap], original_query: str) -> str:
         """Build prompt for generating refinement queries."""
-        gaps_text = "\n".join([
-            f"- {gap.gap_type}: {gap.description} (Priority: {gap.priority})"
-            for gap in gaps
-        ])
+        gaps_text = "\n".join([f"- {gap.gap_type}: {gap.description} (Priority: {gap.priority})" for gap in gaps])
 
         return f"""
 You are a research query refinement expert. Generate specific follow-up queries to address identified gaps.
@@ -173,7 +164,7 @@ Make queries:
 Generate 3-5 refinement queries:
 """
 
-    def _summarize_evidence(self, evidence: List[Evidence]) -> str:
+    def _summarize_evidence(self, evidence: list[Evidence]) -> str:
         """Create a concise summary of evidence for prompts."""
         if not evidence:
             return "No evidence collected yet."
@@ -204,7 +195,7 @@ Generate 3-5 refinement queries:
                     coverage_areas=data.get("coverage_areas", {}),
                     identified_gaps=[],  # Will be filled separately
                     confidence=data.get("confidence", 0.7),
-                    reasoning=data.get("reasoning", "")
+                    reasoning=data.get("reasoning", ""),
                 )
         except Exception as e:
             print(f"Error parsing evaluation response: {e}")
@@ -216,10 +207,10 @@ Generate 3-5 refinement queries:
             coverage_areas={},
             identified_gaps=[],
             confidence=0.5,
-            reasoning="Could not parse evaluation response."
+            reasoning="Could not parse evaluation response.",
         )
 
-    def _parse_gaps_response(self, response: str) -> List[InformationGap]:
+    def _parse_gaps_response(self, response: str) -> list[InformationGap]:
         """Parse JSON response into InformationGap objects."""
         try:
             # Extract JSON from response
@@ -231,19 +222,21 @@ Generate 3-5 refinement queries:
 
                 gaps = []
                 for gap_data in data:
-                    gaps.append(InformationGap(
-                        gap_type=gap_data.get("gap_type", "unknown"),
-                        description=gap_data.get("description", ""),
-                        priority=gap_data.get("priority", 3),
-                        suggested_query=gap_data.get("suggested_query", "")
-                    ))
+                    gaps.append(
+                        InformationGap(
+                            gap_type=gap_data.get("gap_type", "unknown"),
+                            description=gap_data.get("description", ""),
+                            priority=gap_data.get("priority", 3),
+                            suggested_query=gap_data.get("suggested_query", ""),
+                        )
+                    )
                 return gaps
         except Exception as e:
             print(f"Error parsing gaps response: {e}")
 
         return []
 
-    def _parse_refinement_response(self, response: str) -> List[RefinementQuery]:
+    def _parse_refinement_response(self, response: str) -> list[RefinementQuery]:
         """Parse JSON response into RefinementQuery objects."""
         try:
             # Extract JSON from response
@@ -255,12 +248,14 @@ Generate 3-5 refinement queries:
 
                 queries = []
                 for query_data in data:
-                    queries.append(RefinementQuery(
-                        query=query_data.get("query", ""),
-                        gap_addressed=query_data.get("gap_addressed", ""),
-                        priority=query_data.get("priority", 3),
-                        expected_sources=query_data.get("expected_sources", ["web"])
-                    ))
+                    queries.append(
+                        RefinementQuery(
+                            query=query_data.get("query", ""),
+                            gap_addressed=query_data.get("gap_addressed", ""),
+                            priority=query_data.get("priority", 3),
+                            expected_sources=query_data.get("expected_sources", ["web"]),
+                        )
+                    )
                 return queries
         except Exception as e:
             print(f"Error parsing refinement response: {e}")

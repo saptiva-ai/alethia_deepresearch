@@ -1,22 +1,32 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class GuardAction(Enum):
     """Actions that can be taken by the guard."""
+
     ALLOW = "allow"
     BLOCK = "block"
     FILTER = "filter"
     WARN = "warn"
 
+
 class GuardResult:
     """Result of a guard check."""
-    def __init__(self, action: GuardAction, confidence: float, reason: str, filtered_content: Optional[str] = None):
+
+    def __init__(
+        self,
+        action: GuardAction,
+        confidence: float,
+        reason: str,
+        filtered_content: str | None = None,
+    ):
         self.action = action
         self.confidence = confidence
         self.reason = reason
         self.filtered_content = filtered_content
+
 
 class GuardPort(ABC):
     """Port for security and content filtering operations."""
@@ -75,7 +85,7 @@ class GuardPort(ABC):
         pass
 
     @abstractmethod
-    def filter_content(self, content: str, filters: List[str]) -> str:
+    def filter_content(self, content: str, filters: list[str]) -> str:
         """
         Apply content filters to text.
 
@@ -89,7 +99,7 @@ class GuardPort(ABC):
         pass
 
     @abstractmethod
-    def redact_pii(self, content: str, pii_types: Optional[List[str]] = None) -> str:
+    def redact_pii(self, content: str, pii_types: list[str | None] = None) -> str:
         """
         Redact PII from content.
 
@@ -116,7 +126,7 @@ class GuardPort(ABC):
         pass
 
     @abstractmethod
-    def get_policy_violations(self, content: str) -> List[Dict[str, Any]]:
+    def get_policy_violations(self, content: str) -> list[dict[str, Any]]:
         """
         Get detailed policy violations found in content.
 

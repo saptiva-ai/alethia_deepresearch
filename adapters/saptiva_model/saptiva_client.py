@@ -1,6 +1,6 @@
 import os
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import requests
 
@@ -32,9 +32,7 @@ class SaptivaModelAdapter(ModelClientPort):
         messages = [{"role": "user", "content": prompt}]
         return self.chat_completion(model, messages, **kwargs)
 
-    def chat_completion(
-        self, model: str, messages: List[Dict[str, str]], **kwargs: Any
-    ) -> Dict[str, Any]:
+    def chat_completion(self, model: str, messages: list[dict[str, str]], **kwargs: Any) -> dict[str, Any]:
         """Generate a chat completion response."""
         if self.mock_mode:
             return self._get_mock_response(model, str(messages))
@@ -65,11 +63,7 @@ class SaptivaModelAdapter(ModelClientPort):
 
                 # Manejo robusto de respuesta según formato OpenAI
                 choices = api_response.get("choices", [])
-                if choices and "message" in choices[0]:
-                    content = choices[0]["message"].get("content", "")
-                else:
-                    # fallback si el formato cambia
-                    content = api_response.get("response", "")
+                content = choices[0]["message"].get("content", "") if choices and "message" in choices[0] else api_response.get("response", "")
 
                 return {"content": content, "raw": api_response}
 
@@ -90,28 +84,28 @@ class SaptivaModelAdapter(ModelClientPort):
             response = requests.get(
                 f"{self.base_url}/models",
                 headers=headers,
-                timeout=(self.connect_timeout, min(30, self.read_timeout))
+                timeout=(self.connect_timeout, min(30, self.read_timeout)),
             )
             return response.status_code == 200
         except Exception:
             return False
 
-    def list_models(self) -> List[str]:
+    def list_models(self) -> list[str]:
         """List available models."""
         return ["Saptiva Ops", "Saptiva Cortex", "Saptiva Turbo", "Saptiva Legacy", "Saptiva Coder"]
 
-    def get_model_info(self, model: str) -> Dict[str, Any]:
+    def get_model_info(self, model: str) -> dict[str, Any]:
         """Get information about a specific model."""
         model_info = {
             "Saptiva Ops": {"base": "qwen2.5:72b-instruct", "use_case": "planning"},
             "Saptiva Cortex": {"base": "qwen3:30b", "use_case": "analysis"},
             "Saptiva Turbo": {"base": "gemma2:27b", "use_case": "general"},
             "Saptiva Legacy": {"base": "llama3.3:70b", "use_case": "legacy"},
-            "Saptiva Coder": {"base": "deepseek-coder-v2:236b", "use_case": "coding"}
+            "Saptiva Coder": {"base": "deepseek-coder-v2:236b", "use_case": "coding"},
         }
         return model_info.get(model, {"base": "unknown", "use_case": "general"})
 
-    def _get_mock_response(self, model: str, prompt_or_messages: str) -> Dict[str, Any]:
+    def _get_mock_response(self, model: str, prompt_or_messages: str) -> dict[str, Any]:
         """Return a mock response when API is unavailable."""
         if "planner" in model.lower() or "ops" in model.lower():
             return {
@@ -125,16 +119,16 @@ class SaptivaModelAdapter(ModelClientPort):
             }
         elif "evaluation" in prompt_or_messages.lower() or "completeness" in prompt_or_messages.lower():
             return {
-                "content": '{"completion_score": 0.75, "completion_level": "adequate", "areas_covered": ["market", "competitors"], "reasoning": "Good coverage of key areas"}'
+                "content": (
+                    '{"completion_score": 0.75, "completion_level": "adequate", '
+                    '"areas_covered": ["market", "competitors"], '
+                    '"reasoning": "Good coverage of key areas"}'
+                )
             }
         elif "refinement" in prompt_or_messages.lower():
-            return {
-                "content": '["Análisis de regulación fintech México", "Tendencias tecnológicas banca digital"]'
-            }
+            return {"content": '["Análisis de regulación fintech México", "Tendencias tecnológicas banca digital"]'}
         elif "gaps" in prompt_or_messages.lower():
-            return {
-                "content": '[{"area": "regulation", "priority": 3, "description": "Regulatory framework analysis"}]'
-            }
+            return {"content": '[{"area": "regulation", "priority": 3, "description": "Regulatory framework analysis"}]'}
         else:
             return {
                 "content": f"""# Análisis de Competidores Bancarios Digitales México

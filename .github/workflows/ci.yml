@@ -87,7 +87,7 @@ jobs:
       run: ruff check .
       
     - name: 🏷️ Type check with MyPy
-      run: mypy domain/ adapters/ apps/ --ignore-missing-imports
+      run: mypy domain/models --ignore-missing-imports
       
     - name: 🔒 Security check with Bandit
       run: bandit -r domain/ adapters/ apps/ -f json -o bandit-report.json

@@ -1,16 +1,18 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class LogLevel(Enum):
     """Log levels for structured logging."""
+
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
     ERROR = "error"
     CRITICAL = "critical"
+
 
 class LoggingPort(ABC):
     """Port for structured logging operations."""
@@ -31,7 +33,7 @@ class LoggingPort(ABC):
         pass
 
     @abstractmethod
-    def log_event(self, event_type: str, data: Dict[str, Any], task_id: Optional[str] = None) -> bool:
+    def log_event(self, event_type: str, data: dict[str, Any], task_id: str | None = None) -> bool:
         """
         Log a structured event.
 
@@ -46,7 +48,7 @@ class LoggingPort(ABC):
         pass
 
     @abstractmethod
-    def log_error(self, error: Exception, context: Dict[str, Any] = None) -> bool:
+    def log_error(self, error: Exception, context: dict[str, Any] = None) -> bool:
         """
         Log an error with context.
 
@@ -60,7 +62,7 @@ class LoggingPort(ABC):
         pass
 
     @abstractmethod
-    def log_performance(self, operation: str, duration: float, metadata: Dict[str, Any] = None) -> bool:
+    def log_performance(self, operation: str, duration: float, metadata: dict[str, Any] = None) -> bool:
         """
         Log performance metrics.
 
@@ -102,10 +104,13 @@ class LoggingPort(ABC):
         pass
 
     @abstractmethod
-    def get_logs(self, task_id: Optional[str] = None,
-                 start_time: Optional[datetime] = None,
-                 end_time: Optional[datetime] = None,
-                 level: Optional[LogLevel] = None) -> List[Dict[str, Any]]:
+    def get_logs(
+        self,
+        task_id: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        level: LogLevel | None = None,
+    ) -> list[dict[str, Any]]:
         """
         Retrieve logs based on filters.
 

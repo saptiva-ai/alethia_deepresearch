@@ -2,13 +2,14 @@ from datetime import datetime
 import hashlib
 import logging
 import re
-from typing import Any, List, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
 
 try:
     from bs4 import BeautifulSoup
+
     BS4_AVAILABLE = True
 except ImportError:
     BS4_AVAILABLE = False
@@ -18,14 +19,15 @@ from ports.browser_port import BrowserPort
 
 logger = logging.getLogger(__name__)
 
+
 class BasicBrowserAdapter(BrowserPort):
     """Basic browser implementation using requests and BeautifulSoup."""
 
     def __init__(self):
         self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-        })
+        self.session.headers.update(
+            {"User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) " "AppleWebKit/537.36 (KHTML, like Gecko) " "Chrome/91.0.4472.124 Safari/537.36")}
+        )
         self.timeout = 30
 
         if not BS4_AVAILABLE:
@@ -41,7 +43,7 @@ class BasicBrowserAdapter(BrowserPort):
             logger.error(f"Failed to navigate to {url}: {e}")
             return False
 
-    def extract_text(self, url: str) -> Optional[str]:
+    def extract_text(self, url: str) -> str | None:
         """Extract text content from a web page."""
         if not BS4_AVAILABLE:
             logger.error("BeautifulSoup4 required for text extraction")
@@ -71,7 +73,7 @@ class BasicBrowserAdapter(BrowserPort):
             logger.error(f"Error extracting text from {url}: {e}")
             return None
 
-    def extract_evidence(self, url: str, context: str = "") -> Optional[Evidence]:
+    def extract_evidence(self, url: str, context: str = "") -> Evidence | None:
         """Extract structured evidence from a web page."""
         text_content = self.extract_text(url)
         if not text_content:
@@ -89,14 +91,11 @@ class BasicBrowserAdapter(BrowserPort):
                     title = title_tag.get_text().strip()
 
             # Create evidence ID
-            evidence_id = f"web_{hashlib.md5(f'{url}_{datetime.utcnow().isoformat()}'.encode()).hexdigest()[:8]}"
+            hash_suffix = hashlib.sha256(f"{url}_{datetime.utcnow().isoformat()}".encode()).hexdigest()[:8]
+            evidence_id = f"web_{hash_suffix}"
 
             # Create evidence source
-            source = EvidenceSource(
-                url=url,
-                title=title,
-                fetched_at=datetime.utcnow()
-            )
+            source = EvidenceSource(url=url, title=title, fetched_at=datetime.utcnow())
 
             # Limit excerpt to first 1000 characters
             excerpt = text_content[:1000] if len(text_content) > 1000 else text_content
@@ -109,7 +108,7 @@ class BasicBrowserAdapter(BrowserPort):
                 tool_call_id=f"browser:extract:{evidence_id}",
                 score=0.8,  # Default confidence
                 tags=["web", "browser", "extracted"],
-                cit_key=f"WebPage{evidence_id}"
+                cit_key=f"WebPage{evidence_id}",
             )
 
             return evidence
@@ -125,7 +124,7 @@ class BasicBrowserAdapter(BrowserPort):
         logger.warning("Screenshot functionality not implemented in basic browser adapter")
         return False
 
-    def extract_links(self, url: str, filter_pattern: Optional[str] = None) -> List[str]:
+    def extract_links(self, url: str, filter_pattern: str | None = None) -> list[str]:
         """Extract links from a web page."""
         if not BS4_AVAILABLE:
             logger.error("BeautifulSoup4 required for link extraction")

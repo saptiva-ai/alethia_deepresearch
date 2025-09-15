@@ -24,7 +24,6 @@ __all__ = [
     "GuardPort",
     "LoggingPort",
     "StoragePort",
-
     # Supporting classes
     "GuardAction",
     "GuardResult",

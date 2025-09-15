@@ -1,7 +1,7 @@
 from datetime import datetime
 import hashlib
 import os
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from tavily import TavilyClient
 
@@ -16,7 +16,7 @@ class TavilySearchAdapter(SearchPort):
             raise ValueError("TAVILY_API_KEY environment variable not set or is a placeholder.")
         self.client = TavilyClient(api_key=self.api_key)
 
-    def search(self, query: str, max_results: int = 10, **kwargs: Any) -> List[Evidence]:
+    def search(self, query: str, max_results: int = 10, **kwargs: Any) -> list[Evidence]:
         """
         Perform a web search and return evidence.
         """
@@ -29,25 +29,20 @@ class TavilySearchAdapter(SearchPort):
             print(f"Error during Tavily search: {e}")
             return []
 
-    def search_news(self, query: str, max_results: int = 10, days: int = 30) -> List[Evidence]:
+    def search_news(self, query: str, max_results: int = 10, days: int = 30) -> list[Evidence]:
         """
         Search for news articles.
         """
         try:
             # Tavily has news search capability
-            response = self.client.search(
-                query=query,
-                search_depth="advanced",
-                max_results=max_results,
-                topic="news"
-            )
+            response = self.client.search(query=query, search_depth="advanced", max_results=max_results, topic="news")
             results = response.get("results", [])
             return self._convert_to_evidence(results, query)
         except Exception as e:
             print(f"Error during Tavily news search: {e}")
             return []
 
-    def search_academic(self, query: str, max_results: int = 10) -> List[Evidence]:
+    def search_academic(self, query: str, max_results: int = 10) -> list[Evidence]:
         """
         Search for academic papers and research.
         """
@@ -55,7 +50,7 @@ class TavilySearchAdapter(SearchPort):
         academic_query = f"{query} site:arxiv.org OR site:scholar.google.com OR site:pubmed.ncbi.nlm.nih.gov"
         return self.search(academic_query, max_results)
 
-    def get_source_content(self, url: str) -> Optional[str]:
+    def get_source_content(self, url: str) -> str | None:
         """
         Extract full content from a URL.
         """
@@ -79,7 +74,7 @@ class TavilySearchAdapter(SearchPort):
         except Exception:
             return False
 
-    def get_search_quota(self) -> Dict[str, Any]:
+    def get_search_quota(self) -> dict[str, Any]:
         """
         Get current search quota and usage information.
         """
@@ -88,12 +83,12 @@ class TavilySearchAdapter(SearchPort):
             return {
                 "quota_used": 0,
                 "quota_remaining": 1000,  # Default assumption
-                "quota_total": 1000
+                "quota_total": 1000,
             }
         except Exception:
             return {"error": "Unable to retrieve quota information"}
 
-    def _convert_to_evidence(self, results: List[dict], query: str) -> List[Evidence]:
+    def _convert_to_evidence(self, results: list[dict], query: str) -> list[Evidence]:
         """
         Convert Tavily search results to Evidence objects.
         """
@@ -102,13 +97,14 @@ class TavilySearchAdapter(SearchPort):
             # Create evidence ID
             url = result.get("url", "")
             id_string = f"{query}_{url}_{i}"
-            evidence_id = f"tavily_{hashlib.md5(id_string.encode()).hexdigest()[:8]}"
+            hash_suffix = hashlib.sha256(id_string.encode()).hexdigest()[:8]
+            evidence_id = f"tavily_{hash_suffix}"
 
             # Create evidence source
             source = EvidenceSource(
                 url=result.get("url", ""),
                 title=result.get("title", ""),
-                fetched_at=datetime.utcnow()
+                fetched_at=datetime.utcnow(),
             )
 
             # Create evidence object
@@ -119,7 +115,7 @@ class TavilySearchAdapter(SearchPort):
                 tool_call_id=f"tavily:search:{evidence_id}",
                 score=result.get("score", 0.8),  # Tavily provides relevance scores
                 tags=["web", "tavily"],
-                cit_key=f"TavilyResult{i+1}"
+                cit_key=f"TavilyResult{i+1}",
             )
             evidence_list.append(evidence)
 

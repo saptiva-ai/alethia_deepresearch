@@ -19,10 +19,7 @@ class PlannerService:
         try:
             prompt = self._build_prompt(query)
 
-            response = self.model_adapter.generate(
-                model=self.planner_model,
-                prompt=prompt
-            )
+            response = self.model_adapter.generate(model=self.planner_model, prompt=prompt)
 
             plan_yaml = response.get("content", "")
             return self._parse_plan(query, plan_yaml)
@@ -31,7 +28,7 @@ class PlannerService:
             # Return fallback plan
             return ResearchPlan(
                 main_query=query,
-                sub_tasks=[ResearchSubTask(id="T01", query=query, sources=["web"])]
+                sub_tasks=[ResearchSubTask(id="T01", query=query, sources=["web"])],
             )
 
     def _build_prompt(self, query: str) -> str:
@@ -51,7 +48,7 @@ Research Plan (YAML):
                 print(f"Warning: Planner did not return a list of sub-tasks. Got: {sub_tasks_data}")
                 return ResearchPlan(
                     main_query=main_query,
-                    sub_tasks=[ResearchSubTask(id="T01", query=main_query, sources=["web"])]
+                    sub_tasks=[ResearchSubTask(id="T01", query=main_query, sources=["web"])],
                 )
 
             sub_tasks = [ResearchSubTask(**task_data) for task_data in sub_tasks_data]
@@ -61,5 +58,5 @@ Research Plan (YAML):
             # Return a plan with a single task to research the original query
             return ResearchPlan(
                 main_query=main_query,
-                sub_tasks=[ResearchSubTask(id="T01", query=main_query, sources=["web"])]
+                sub_tasks=[ResearchSubTask(id="T01", query=main_query, sources=["web"])],
             )

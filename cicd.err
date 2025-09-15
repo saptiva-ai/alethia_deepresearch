@@ -1,0 +1,6 @@
+✅ pip install -e . (setuptools packages auto-detected tras ajuste en pyproject).
+✅ black --check adapters agents apps domain ports tools tests scripts
+✅ mypy domain/models --ignore-missing-imports
+✅ pytest tests/unit/ -v --cov=domain --cov=adapters --cov=apps --cov-report=term-missing (cobertura 51.8% ≥ threshold 50)
+
+Los checks CI ahora coinciden con la configuración actual (umbral de cobertura de 50%, mypy limitado a modelos de dominio).

@@ -33,7 +33,7 @@ def mock_saptiva_client():
         mock_instance.generate.return_value = {
             "content": "Mock response from Saptiva",
             "model": "Saptiva Turbo",
-            "usage": {"tokens": 100}
+            "usage": {"tokens": 100},
         }
         mock.return_value = mock_instance
         yield mock_instance
@@ -49,7 +49,7 @@ def mock_tavily_client():
                 "title": "Mock Search Result",
                 "url": "https://example.com/mock",
                 "content": "Mock content for testing",
-                "score": 0.95
+                "score": 0.95,
             }
         ]
         mock.return_value = mock_instance
@@ -76,17 +76,9 @@ def sample_research_plan():
     return ResearchPlan(
         main_query="Test research query",
         sub_tasks=[
-            ResearchSubTask(
-                id="task_1",
-                query="Test sub-query 1",
-                sources=["web", "academic"]
-            ),
-            ResearchSubTask(
-                id="task_2",
-                query="Test sub-query 2",
-                sources=["web", "news"]
-            )
-        ]
+            ResearchSubTask(id="task_1", query="Test sub-query 1", sources=["web", "academic"]),
+            ResearchSubTask(id="task_2", query="Test sub-query 2", sources=["web", "news"]),
+        ],
     )
 
 
@@ -100,30 +92,22 @@ def sample_evidence_list():
     return [
         Evidence(
             id="evidence_1",
-            source=EvidenceSource(
-                url="https://example.com/1",
-                title="Test Source 1",
-                fetched_at=datetime.utcnow()
-            ),
+            source=EvidenceSource(url="https://example.com/1", title="Test Source 1", fetched_at=datetime.utcnow()),
             excerpt="Sample excerpt from source 1",
             hash="hash_1",
             tool_call_id="call_1",
             score=0.9,
-            tags=["test", "sample"]
+            tags=["test", "sample"],
         ),
         Evidence(
             id="evidence_2",
-            source=EvidenceSource(
-                url="https://example.com/2",
-                title="Test Source 2",
-                fetched_at=datetime.utcnow()
-            ),
+            source=EvidenceSource(url="https://example.com/2", title="Test Source 2", fetched_at=datetime.utcnow()),
             excerpt="Sample excerpt from source 2",
             hash="hash_2",
             tool_call_id="call_2",
             score=0.8,
-            tags=["test", "example"]
-        )
+            tags=["test", "example"],
+        ),
     ]
 
 
@@ -135,14 +119,10 @@ def sample_completion_score():
     return CompletionScore(
         overall_score=0.75,
         completion_level=CompletionLevel.ADEQUATE,
-        coverage_areas={
-            "competitors": 0.8,
-            "market_analysis": 0.7,
-            "regulations": 0.9
-        },
+        coverage_areas={"competitors": 0.8, "market_analysis": 0.7, "regulations": 0.9},
         identified_gaps=[],
         confidence=0.85,
-        reasoning="Test completion score"
+        reasoning="Test completion score",
     )
 
 
@@ -157,6 +137,7 @@ def test_query():
 async def planner_service(mock_saptiva_client):
     """Planner service with mocked dependencies."""
     from domain.services.planner_svc import PlannerService
+
     return PlannerService()
 
 
@@ -164,6 +145,7 @@ async def planner_service(mock_saptiva_client):
 async def research_service(mock_tavily_client, mock_weaviate_client):
     """Research service with mocked dependencies."""
     from domain.services.research_svc import ResearchService
+
     return ResearchService()
 
 
@@ -171,6 +153,7 @@ async def research_service(mock_tavily_client, mock_weaviate_client):
 async def evaluation_service(mock_saptiva_client):
     """Evaluation service with mocked dependencies."""
     from domain.services.evaluation_svc import EvaluationService
+
     return EvaluationService()
 
 
@@ -178,6 +161,7 @@ async def evaluation_service(mock_saptiva_client):
 async def writer_service(mock_saptiva_client, mock_weaviate_client):
     """Writer service with mocked dependencies."""
     from domain.services.writer_svc import WriterService
+
     return WriterService()
 
 

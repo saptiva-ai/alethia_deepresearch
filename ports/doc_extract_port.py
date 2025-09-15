@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from domain.models.evidence import Evidence
 
@@ -9,7 +9,7 @@ class DocExtractPort(ABC):
     """Port for document extraction operations (PDF, OCR, etc.)."""
 
     @abstractmethod
-    def extract_text_from_pdf(self, file_path: Union[str, Path]) -> Optional[str]:
+    def extract_text_from_pdf(self, file_path: str | Path) -> str | None:
         """
         Extract text content from a PDF file.
 
@@ -22,7 +22,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def extract_text_from_image(self, file_path: Union[str, Path]) -> Optional[str]:
+    def extract_text_from_image(self, file_path: str | Path) -> str | None:
         """
         Extract text from an image using OCR.
 
@@ -35,7 +35,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def extract_text_from_docx(self, file_path: Union[str, Path]) -> Optional[str]:
+    def extract_text_from_docx(self, file_path: str | Path) -> str | None:
         """
         Extract text content from a Word document.
 
@@ -48,7 +48,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def extract_evidence_from_document(self, file_path: Union[str, Path], context: str = "") -> List[Evidence]:
+    def extract_evidence_from_document(self, file_path: str | Path, context: str = "") -> list[Evidence]:
         """
         Extract structured evidence from a document.
 
@@ -62,7 +62,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def extract_metadata(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+    def extract_metadata(self, file_path: str | Path) -> dict[str, Any]:
         """
         Extract metadata from a document.
 
@@ -75,7 +75,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def convert_to_pdf(self, file_path: Union[str, Path], output_path: Union[str, Path]) -> bool:
+    def convert_to_pdf(self, file_path: str | Path, output_path: str | Path) -> bool:
         """
         Convert a document to PDF format.
 
@@ -89,7 +89,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def split_document(self, file_path: Union[str, Path], chunk_size: int = 1000) -> List[str]:
+    def split_document(self, file_path: str | Path, chunk_size: int = 1000) -> list[str]:
         """
         Split a document into chunks for processing.
 
@@ -103,7 +103,7 @@ class DocExtractPort(ABC):
         pass
 
     @abstractmethod
-    def supported_formats(self) -> List[str]:
+    def supported_formats(self) -> list[str]:
         """
         Get list of supported document formats.
 

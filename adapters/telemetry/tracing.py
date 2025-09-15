@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from functools import wraps
 import logging
 import os
-from typing import Any, Dict, Optional
+from typing import Any
 
 from opentelemetry import trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
@@ -21,11 +21,12 @@ logger = logging.getLogger(__name__)
 
 class TelemetryManager:
     """Manages OpenTelemetry configuration and tracing for Aletheia."""
+
     _instance = None
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(TelemetryManager, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance.tracer_provider = None
             cls._instance.tracer = None
             cls._instance.initialized = False
@@ -45,12 +46,14 @@ class TelemetryManager:
 
         try:
             # Create resource with service information
-            resource = Resource.create({
-                "service.name": "aletheia-deep-research",
-                "service.version": "0.2.0",
-                "service.namespace": "research",
-                "deployment.environment": os.getenv("ENVIRONMENT", "development")
-            })
+            resource = Resource.create(
+                {
+                    "service.name": "aletheia-deep-research",
+                    "service.version": "0.2.0",
+                    "service.namespace": "research",
+                    "deployment.environment": os.getenv("ENVIRONMENT", "development"),
+                }
+            )
 
             # Create tracer provider
             self.tracer_provider = TracerProvider(resource=resource)
@@ -132,7 +135,7 @@ def get_tracer() -> trace.Tracer:
 
 
 @contextmanager
-def trace_operation(name: str, attributes: Optional[Dict[str, Any]] = None, tracer: Optional[trace.Tracer] = None):
+def trace_operation(name: str, attributes: dict[str, Any | None] = None, tracer: trace.Tracer | None = None):
     """Context manager for tracing operations."""
     if tracer is None:
         tracer = get_tracer()
@@ -149,8 +152,9 @@ def trace_operation(name: str, attributes: Optional[Dict[str, Any]] = None, trac
             raise
 
 
-def trace_async_operation(operation_name: str, attributes: Optional[Dict[str, Any]] = None):
+def trace_async_operation(operation_name: str, attributes: dict[str, Any | None] = None):
     """Decorator for tracing async operations."""
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -173,12 +177,15 @@ def trace_async_operation(operation_name: str, attributes: Optional[Dict[str, An
                     span.record_exception(e)
                     span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
                     raise
+
         return wrapper
+
     return decorator
 
 
-def trace_sync_operation(operation_name: str, attributes: Optional[Dict[str, Any]] = None):
+def trace_sync_operation(operation_name: str, attributes: dict[str, Any | None] = None):
     """Decorator for tracing sync operations."""
+
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -201,18 +208,19 @@ def trace_sync_operation(operation_name: str, attributes: Optional[Dict[str, Any
                     span.record_exception(e)
                     span.set_status(trace.Status(trace.StatusCode.ERROR, str(e)))
                     raise
+
         return wrapper
+
     return decorator
 
 
-def add_span_attributes(span: trace.Span, attributes: Dict[str, Any]) -> None:
+def add_span_attributes(span: trace.Span, attributes: dict[str, Any]) -> None:
     """Helper to add multiple attributes to a span."""
     for key, value in attributes.items():
         span.set_attribute(key, value)
 
 
-def record_research_metrics(span: trace.Span, evidence_count: int, execution_time: float,
-                          quality_score: Optional[float] = None) -> None:
+def record_research_metrics(span: trace.Span, evidence_count: int, execution_time: float, quality_score: float | None = None) -> None:
     """Record research-specific metrics in span."""
     span.set_attribute("research.evidence_count", evidence_count)
     span.set_attribute("research.execution_time_seconds", execution_time)

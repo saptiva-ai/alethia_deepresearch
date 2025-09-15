@@ -1,6 +1,5 @@
 from datetime import datetime
 import os
-from typing import List
 
 import weaviate
 
@@ -29,7 +28,7 @@ class WeaviateVectorAdapter(VectorStorePort):
             self.client = None
 
         # Mock storage for when Weaviate is not available
-        self.mock_store: Dict[str, List[dict]] = {}
+        self.mock_store: dict[str, list[dict]] = {}
 
     def store_evidence(self, evidence: Evidence, collection_name: str = "default") -> bool:
         """Store evidence in Weaviate or mock storage."""
@@ -51,15 +50,11 @@ class WeaviateVectorAdapter(VectorStorePort):
                 "tool_call_id": evidence.tool_call_id or "",
                 "score": evidence.score or 0.0,
                 "tags": evidence.tags or [],
-                "cit_key": evidence.cit_key or ""
+                "cit_key": evidence.cit_key or "",
             }
 
             # Insert object with vector (Weaviate will auto-vectorize based on excerpt)
-            self.client.data_object.create(
-                data_object=data_object,
-                class_name=collection_name,
-                uuid=evidence.id
-            )
+            self.client.data_object.create(data_object=data_object, class_name=collection_name, uuid=evidence.id)
 
             print(f"Stored evidence {evidence.id} in Weaviate collection {collection_name}")
             return True
@@ -68,7 +63,7 @@ class WeaviateVectorAdapter(VectorStorePort):
             print(f"Error storing evidence in Weaviate: {e}")
             return False
 
-    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> List[Evidence]:
+    def search_similar(self, query: str, collection_name: str = "default", limit: int = 5) -> list[Evidence]:
         """Search for similar evidence using semantic search."""
         if self.mock_mode:
             return self._mock_search_similar(query, collection_name, limit)
@@ -76,14 +71,22 @@ class WeaviateVectorAdapter(VectorStorePort):
         try:
             # Perform semantic search using nearText
             response = (
-                self.client.query
-                .get(collection_name, [
-                    "evidence_id", "excerpt", "source_url", "source_title",
-                    "fetched_at", "hash", "tool_call_id", "score", "tags", "cit_key"
-                ])
-                .with_near_text({
-                    "concepts": [query]
-                })
+                self.client.query.get(
+                    collection_name,
+                    [
+                        "evidence_id",
+                        "excerpt",
+                        "source_url",
+                        "source_title",
+                        "fetched_at",
+                        "hash",
+                        "tool_call_id",
+                        "score",
+                        "tags",
+                        "cit_key",
+                    ],
+                )
+                .with_near_text({"concepts": [query]})
                 .with_additional(["score"])
                 .with_limit(limit)
                 .do()
@@ -98,14 +101,14 @@ class WeaviateVectorAdapter(VectorStorePort):
                         source=EvidenceSource(
                             url=obj["source_url"],
                             title=obj["source_title"],
-                            fetched_at=datetime.fromisoformat(obj["fetched_at"])
+                            fetched_at=datetime.fromisoformat(obj["fetched_at"]),
                         ),
                         excerpt=obj["excerpt"],
                         hash=obj.get("hash") or None,
                         tool_call_id=obj.get("tool_call_id") or None,
                         score=obj.get("_additional", {}).get("score", obj.get("score", 0.0)),
                         tags=obj.get("tags", []),
-                        cit_key=obj.get("cit_key") or None
+                        cit_key=obj.get("cit_key") or None,
                     )
                     results.append(evidence)
 
@@ -144,7 +147,7 @@ class WeaviateVectorAdapter(VectorStorePort):
                     {"name": "score", "dataType": ["number"]},
                     {"name": "tags", "dataType": ["text[]"]},
                     {"name": "cit_key", "dataType": ["text"]},
-                ]
+                ],
             }
 
             self.client.schema.create_class(class_definition)
@@ -200,14 +203,14 @@ class WeaviateVectorAdapter(VectorStorePort):
             "tool_call_id": evidence.tool_call_id,
             "score": evidence.score,
             "tags": evidence.tags,
-            "cit_key": evidence.cit_key
+            "cit_key": evidence.cit_key,
         }
 
         self.mock_store[collection_name].append(evidence_dict)
         print(f"[MOCK] Stored evidence {evidence.id} in collection {collection_name}")
         return True
 
-    def _mock_search_similar(self, query: str, collection_name: str, limit: int) -> List[Evidence]:
+    def _mock_search_similar(self, query: str, collection_name: str, limit: int) -> list[Evidence]:
         """Mock search for testing without Weaviate."""
         if collection_name not in self.mock_store:
             return []
@@ -223,14 +226,14 @@ class WeaviateVectorAdapter(VectorStorePort):
                     source=EvidenceSource(
                         url=evidence_dict["source_url"],
                         title=evidence_dict["source_title"],
-                        fetched_at=datetime.fromisoformat(evidence_dict["fetched_at"])
+                        fetched_at=datetime.fromisoformat(evidence_dict["fetched_at"]),
                     ),
                     excerpt=evidence_dict["excerpt"],
                     hash=evidence_dict["hash"],
                     tool_call_id=evidence_dict["tool_call_id"],
                     score=evidence_dict["score"],
                     tags=evidence_dict["tags"],
-                    cit_key=evidence_dict["cit_key"]
+                    cit_key=evidence_dict["cit_key"],
                 )
                 results.append(evidence)
 

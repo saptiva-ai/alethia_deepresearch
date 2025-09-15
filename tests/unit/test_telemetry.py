@@ -63,19 +63,20 @@ class TestTelemetryManager:
         assert manager.initialized
         assert len(manager.tracer_provider._active_span_processor._span_processors) == 0
 
-    @patch.object(TelemetryManager, 'setup_tracing')
+    @patch.object(TelemetryManager, "setup_tracing")
     def test_get_tracer_uninitialized(self, mock_setup):
         """Test that get_tracer calls setup_tracing when not initialized."""
         manager = TelemetryManager()
         manager.initialized = False
         manager.tracer = None
-        
+
         # Mock setup_tracing to set a NoOpTracer
         def mock_setup_side_effect():
             manager.tracer = trace.NoOpTracer()
             manager.initialized = True
+
         mock_setup.side_effect = mock_setup_side_effect
-        
+
         tracer = manager.get_tracer()
         mock_setup.assert_called_once()
         assert isinstance(tracer, trace.NoOpTracer)
@@ -91,6 +92,7 @@ class TestTelemetryManager:
 @pytest.mark.asyncio
 async def test_trace_async_operation_decorator():
     """Test the trace_async_operation decorator can execute without errors."""
+
     @trace_async_operation("test_op", {"attr1": "value1"})
     async def my_async_func(x, y):
         return x + y
@@ -124,6 +126,7 @@ def test_trace_sync_operation_decorator():
 @pytest.mark.asyncio
 async def test_trace_async_operation_exception():
     """Test that the decorator properly propagates exceptions."""
+
     @trace_async_operation("test_op_fail")
     async def my_failing_func():
         raise ValueError("Test error")
@@ -169,8 +172,8 @@ class TestEventLogger:
         logger.log_event.assert_called_once()
         args, kwargs = logger.log_event.call_args
         assert args[0] == EventType.RESEARCH_STARTED
-        assert kwargs['data']['query'] == "my query"
-        assert kwargs['task_id'] == "task-abc"
+        assert kwargs["data"]["query"] == "my query"
+        assert kwargs["task_id"] == "task-abc"
 
     def test_get_events_for_task(self):
         """Test filtering events by task_id."""
@@ -191,7 +194,7 @@ class TestEventLogger:
         event2 = logger.log_event(EventType.PLAN_CREATED, task_id="task-1")
 
         ndjson = logger.export_events_ndjson(task_id="task-1")
-        lines = ndjson.strip().split('\n')
+        lines = ndjson.strip().split("\n")
 
         assert len(lines) == 2
         assert '"event_type": "research.started"' in lines[0]
