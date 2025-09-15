@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -30,8 +32,8 @@ class ResearchIteration:
     queries_executed: list[str]
     evidence_collected: list[Evidence]
     completion_score: CompletionScore | None = None
-    gaps_identified: list[InformationGap] = None
-    refinement_queries: list[RefinementQuery] = None
+    gaps_identified: list[InformationGap] | None = None
+    refinement_queries: list[RefinementQuery] | None = None
     timestamp: datetime = None
 
     def __post_init__(self):
