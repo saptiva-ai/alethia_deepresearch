@@ -46,11 +46,16 @@ jobs:
           python -m pytest --version
           echo "🔍 Checking individual test files..."
           for test_file in tests/unit/test_*.py; do
-            echo "Testing import: $test_file"
-            python -c "import sys; sys.path.insert(0, '.'); exec(open('$test_file').read())" 2>&1 || echo "❌ Failed to import $test_file"
+            echo "=== Testing pytest collection: $test_file ==="
+            if python -m pytest --collect-only "$test_file" 2>&1; then
+              echo "✅ Collection successful"
+            else
+              echo "❌ Collection failed"
+            fi
+            echo ""
           done
-          echo "🔍 Running test collection with verbose errors..."
-          python -m pytest --collect-only tests/unit/ -v || echo "❌ Test collection failed"
+          echo "🔍 Running full test collection with detailed errors..."
+          python -m pytest --collect-only tests/unit/ -v --tb=long 2>&1 || echo "❌ Full test collection failed"
 
       - name: Run Ruff
         run: ruff check . --output-format=github
