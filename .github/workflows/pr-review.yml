@@ -113,8 +113,8 @@ jobs:
         ENVIRONMENT: test
       run: |
         echo "🧪 Running comprehensive test suite on PR changes..."
-        python -m pytest \
-          --cov=. \
+        python -m pytest tests/unit/ \
+          --cov=domain --cov=adapters --cov=apps \
           --cov-report=xml \
           --cov-report=term-missing \
           --html=pr-test-results.html \

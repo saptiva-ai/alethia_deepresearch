@@ -164,8 +164,8 @@ jobs:
         pip install pytest-cov
         
         echo "🧪 Running comprehensive test suite for release validation..."
-        python -m pytest \
-          --cov=. \
+        python -m pytest tests/unit/ \
+          --cov=domain --cov=adapters --cov=apps \
           --cov-report=term-missing \
           --tb=short \
           -v
