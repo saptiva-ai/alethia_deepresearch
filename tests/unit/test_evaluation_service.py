@@ -1,11 +1,13 @@
 """
 Unit tests for EvaluationService - Together AI Pattern.
 """
-import pytest
 import json
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
+
+import pytest
+
+from domain.models.evaluation import CompletionLevel, CompletionScore, InformationGap, RefinementQuery
 from domain.services.evaluation_svc import EvaluationService
-from domain.models.evaluation import CompletionScore, CompletionLevel, InformationGap, RefinementQuery
 
 
 @pytest.mark.unit
@@ -229,8 +231,9 @@ class TestEvaluationService:
     def test_summarize_evidence_large_list(self):
         """Test evidence summarization with >10 items."""
         evaluator = EvaluationService()
-        from domain.models.evidence import Evidence, EvidenceSource
         from datetime import datetime
+
+        from domain.models.evidence import Evidence, EvidenceSource
 
         # Create 15 evidence items
         evidence_list = []

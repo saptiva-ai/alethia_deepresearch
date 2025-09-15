@@ -1,10 +1,10 @@
 """
 Tests for the WriterService.
 """
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from domain.services.writer_svc import WriterService
 from domain.models.evidence import Evidence, EvidenceSource
+from domain.services.writer_svc import WriterService
 
 
 @patch("domain.services.writer_svc.SaptivaModelAdapter")

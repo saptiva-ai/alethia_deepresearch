@@ -1,23 +1,24 @@
 """
 Tests for domain models.
 """
-import pytest
-from pydantic import ValidationError
 from datetime import datetime
+
+from pydantic import ValidationError
+import pytest
 
 from domain.models.evaluation import (
     CompletionLevel,
-    InformationGap,
     CompletionScore,
+    InformationGap,
     RefinementQuery,
 )
 from domain.models.evidence import (
-    EvidenceSource,
     Evidence,
+    EvidenceSource,
 )
 from domain.models.plan import (
-    ResearchSubTask,
     ResearchPlan,
+    ResearchSubTask,
 )
 
 

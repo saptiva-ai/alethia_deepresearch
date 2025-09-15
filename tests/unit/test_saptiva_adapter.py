@@ -1,10 +1,12 @@
 """
 Unit tests for SaptivaModelAdapter.
 """
-import pytest
 import os
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import Mock, patch
+
+import pytest
 import requests
+
 from adapters.saptiva_model.saptiva_client import SaptivaModelAdapter
 
 

@@ -1,12 +1,13 @@
 """
 Unit tests for ResearchService.
 """
-import pytest
-from unittest.mock import patch, Mock
-from domain.services.research_svc import ResearchService
-from domain.models.plan import ResearchPlan, ResearchSubTask
-from domain.models.evidence import Evidence, EvidenceSource
 from datetime import datetime
+from unittest.mock import Mock, patch
+
+import pytest
+
+from domain.models.evidence import Evidence, EvidenceSource
+from domain.services.research_svc import ResearchService
 
 
 @pytest.mark.unit

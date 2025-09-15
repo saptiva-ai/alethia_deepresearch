@@ -1,25 +1,20 @@
 """
 Tests for the telemetry adapter, including tracing and event logging.
 """
-import asyncio
 import os
-from unittest.mock import MagicMock, patch, call, mock_open
+from unittest.mock import MagicMock, patch
 
-import pytest
 from opentelemetry import trace
+import pytest
 
-from adapters.telemetry.tracing import (
-    TelemetryManager,
-    get_tracer,
-    setup_telemetry,
-    trace_async_operation,
-    trace_sync_operation,
-)
 from adapters.telemetry.events import (
     EventLogger,
     EventType,
-    get_event_logger,
-    ResearchEvent,
+)
+from adapters.telemetry.tracing import (
+    TelemetryManager,
+    trace_async_operation,
+    trace_sync_operation,
 )
 
 
@@ -190,8 +185,8 @@ class TestEventLogger:
     def test_export_events_ndjson(self):
         """Test exporting events to NDJSON."""
         logger = EventLogger()
-        event1 = logger.log_event(EventType.RESEARCH_STARTED, task_id="task-1")
-        event2 = logger.log_event(EventType.PLAN_CREATED, task_id="task-1")
+        logger.log_event(EventType.RESEARCH_STARTED, task_id="task-1")
+        logger.log_event(EventType.PLAN_CREATED, task_id="task-1")
 
         ndjson = logger.export_events_ndjson(task_id="task-1")
         lines = ndjson.strip().split("\n")

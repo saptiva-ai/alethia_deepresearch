@@ -1,12 +1,14 @@
 """
 Unit tests for TavilySearchAdapter.
 """
-import pytest
-import os
-from unittest.mock import patch, Mock
-from adapters.tavily_search.tavily_client import TavilySearchAdapter
-from domain.models.evidence import Evidence, EvidenceSource
 from datetime import datetime
+import os
+from unittest.mock import Mock, patch
+
+import pytest
+
+from adapters.tavily_search.tavily_client import TavilySearchAdapter
+from domain.models.evidence import Evidence
 
 
 @pytest.mark.unit

@@ -1,15 +1,15 @@
 """
 Tests for IterativeResearchOrchestrator - the main orchestrator for deep research.
 """
-from unittest.mock import AsyncMock, Mock, patch
 from datetime import datetime
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
-from domain.services.iterative_research_svc import IterativeResearchOrchestrator, ResearchIteration, DeepResearchResult
 from domain.models.evaluation import CompletionLevel, CompletionScore
 from domain.models.evidence import Evidence, EvidenceSource
 from domain.models.plan import ResearchPlan, ResearchSubTask
+from domain.services.iterative_research_svc import DeepResearchResult, IterativeResearchOrchestrator, ResearchIteration
 
 
 class TestResearchIteration:

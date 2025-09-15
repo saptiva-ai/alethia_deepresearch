@@ -1,10 +1,12 @@
 """
 Unit tests for PlannerService.
 """
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
+
+from domain.models.plan import ResearchPlan
 from domain.services.planner_svc import PlannerService
-from domain.models.plan import ResearchPlan, ResearchSubTask
 
 
 @pytest.mark.unit
@@ -191,7 +193,7 @@ class TestPlannerService:
   query: "Analysis task 1"
   sources: ["web", "news"]
 - id: "task_2"
-  query: "Analysis task 2"  
+  query: "Analysis task 2"
   sources: ["web", "academic"]
 - id: "task_3"
   query: "Analysis task 3"
