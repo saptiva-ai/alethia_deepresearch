@@ -80,7 +80,7 @@ ruff check .
 black --check .
 
 # Tipado estático
-mypy domain/ adapters/ apps/
+mypy domain/models --ignore-missing-imports
 
 # Pruebas unitarias con cobertura (requiere pip install -e .)
 # El pipeline actual valida un mínimo de 50% de cobertura.
@@ -101,9 +101,9 @@ Bandit y Safety también forman parte del pipeline (`bandit -r domain/ adapters/
 Archivo principal: `.github/workflows/ci.yml`.
 
 1. **Tests (`tests/unit`)**: instala dependencias y ejecuta pytest en Python 3.11 y 3.12 con
-   cobertura mínima del 25% (configurable). Exporta `coverage.xml`/`htmlcov`. Asegúrate de tener
+   cobertura mínima del 50% (configurable). Exporta `coverage.xml`/`htmlcov`. Asegúrate de tener
    el paquete instalado (`pip install -e .`) para reproducirlo en local.
-2. **Lint**: `black --check`, `ruff check`, `mypy`, `bandit` y `safety`.
+2. **Lint**: `black --check`, `ruff check`, `mypy domain/models`, `bandit` y `safety`.
 3. **Integration**: levanta un servicio de Weaviate y lanza `pytest tests/integration`.
 4. **Build**: construye y smoke-testea la imagen Docker de la API.
 5. **Security**: escaneo con Trivy (se sube el resultado como SARIF).
