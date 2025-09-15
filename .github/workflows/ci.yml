@@ -44,7 +44,13 @@ jobs:
           python -c "import domain.models.evidence; print('✅ Domain models import successful')"
           python -c "import pytest; print(f'✅ Pytest version: {pytest.__version__}')"
           python -m pytest --version
-          python -m pytest --collect-only tests/unit/ | grep "collected" || echo "❌ Test collection failed"
+          echo "🔍 Checking individual test files..."
+          for test_file in tests/unit/test_*.py; do
+            echo "Testing import: $test_file"
+            python -c "import sys; sys.path.insert(0, '.'); exec(open('$test_file').read())" 2>&1 || echo "❌ Failed to import $test_file"
+          done
+          echo "🔍 Running test collection with verbose errors..."
+          python -m pytest --collect-only tests/unit/ -v || echo "❌ Test collection failed"
 
       - name: Run Ruff
         run: ruff check . --output-format=github
