@@ -1,9 +1,10 @@
 # Aletheia (ἀλήθεια – desocultamiento de la verdad)
 
-[![CI Status](https://github.com/saptiva-ai/alethia_deepresearch/workflows/CI%20-%20Quality%20Checks/badge.svg)](https://github.com/saptiva-ai/alethia_deepresearch/actions)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Docker](https://img.shields.io/badge/Docker-20.10+-blue.svg)](https://www.docker.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://www.python.org/)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 
 Aletheia es una plataforma de investigación asistida por agentes que separa claramente el
 *Dominio* de la orquestación y de las integraciones externas. El objetivo del repositorio es
@@ -131,7 +132,7 @@ SAPTIVA_API_KEY=tu_clave_saptiva_aqui
 TAVILY_API_KEY=tu_clave_tavily_aqui
 
 # === Configuración predeterminada (ya configurada) ===
-SAPTIVA_BASE_URL=https://api.saptiva.ai/v1
+SAPTIVA_BASE_URL=https://api.saptiva.com/v1
 VECTOR_BACKEND=none
 ENVIRONMENT=development
 ```
@@ -282,40 +283,255 @@ VECTOR_BACKEND=none  # Cambiar a 'weaviate' solo si lo necesitas
 
 ### Core Research Endpoints
 
-| Endpoint | Method | Descripción |
-|----------|--------|-------------|
-| `/health` | GET | Health check con status de APIs |
-| `/research` | POST | Investigación simple optimizada |
-| `/deep-research` | POST | Investigación profunda iterativa |
-| `/tasks/{task_id}/status` | GET | Estado de tarea en curso |
-| `/reports/{task_id}` | GET | Reporte final generado |
-| `/traces/{task_id}` | GET | Trazas de telemetría |
+| Endpoint | Method | Descripción | Tiempo estimado |
+|----------|--------|-------------|-----------------|
+| `/health` | GET | Health check con status de APIs | < 1s |
+| `/research` | POST | Investigación simple optimizada | 30-60s |
+| `/deep-research` | POST | Investigación profunda iterativa | 2-5 min |
+| `/tasks/{task_id}/status` | GET | Estado de tarea en curso | < 1s |
+| `/reports/{task_id}` | GET | Reporte final generado | < 1s |
+| `/traces/{task_id}` | GET | Trazas de telemetría | < 1s |
 
-### Ejemplos de uso
+### 🚀 Guía de Inicio Rápido
+
+#### 1. Verificar que el sistema esté funcionando
 
 ```bash
-# 1. Investigación simple (optimizada para rapidez)
+# Health check - verifica que la API esté corriendo
+curl http://localhost:8000/health
+
+# Respuesta esperada
+{
+  "status": "healthy",
+  "service": "Aletheia Deep Research API",
+  "version": "0.2.0",
+  "api_keys": {
+    "saptiva_available": true,
+    "tavily_available": true
+  }
+}
+```
+
+#### 2. Investigación Simple (Recomendado para comenzar)
+
+**Características:**
+- ✅ Rápida (30-60 segundos)
+- ✅ Procesamiento paralelo
+- ✅ Ideal para consultas directas
+
+```bash
+# Iniciar investigación
 curl -X POST "http://localhost:8000/research" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Latest developments in quantum computing 2025"}'
+  -d '{
+    "query": "Últimas tendencias en inteligencia artificial 2025"
+  }'
 
 # Respuesta
 {
-  "task_id": "task-abc123",
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
   "status": "accepted",
-  "message": "Research task initiated"
+  "details": "Research task has been accepted and is running..."
 }
 
-# 2. Verificar estado de la tarea
-curl "http://localhost:8000/tasks/task-abc123/status"
+# Verificar estado (espera ~30 segundos)
+curl "http://localhost:8000/tasks/550e8400-e29b-41d4-a716-446655440000/status"
 
-# 3. Obtener reporte final
-curl "http://localhost:8000/reports/task-abc123"
+# Cuando status="completed", obtener el reporte
+curl "http://localhost:8000/reports/550e8400-e29b-41d4-a716-446655440000"
+```
 
-# 4. Investigación profunda (iterativa con múltiples refinamientos)
+#### 3. Investigación Profunda (Deep Research)
+
+**Características:**
+- 🔄 Iterativa con refinamiento automático
+- 📊 Evaluación de completitud
+- 🎯 Identificación de brechas de información
+- ⚙️ Parámetros configurables
+
+```bash
+# Iniciar investigación profunda
 curl -X POST "http://localhost:8000/deep-research" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Impact of AI regulation on startup ecosystems", "max_iterations": 3}'
+  -d '{
+    "query": "Impacto de la regulación AI Act en startups europeas",
+    "max_iterations": 3,
+    "min_completion_score": 0.85,
+    "budget": 200
+  }'
+
+# Respuesta
+{
+  "task_id": "deep-550e8400-e29b-41d4-a716-446655440000",
+  "status": "accepted",
+  "details": "Deep research task accepted with parallel processing..."
+}
+
+# Obtener reporte con métricas de calidad
+curl "http://localhost:8000/deep-research/deep-550e8400-e29b-41d4-a716-446655440000"
+```
+
+**Parámetros de Deep Research:**
+
+| Parámetro | Tipo | Descripción | Default | Rango |
+|-----------|------|-------------|---------|-------|
+| `query` | string | Consulta de investigación | - | Requerido |
+| `max_iterations` | int | Máximo de iteraciones | 3 | 1-10 |
+| `min_completion_score` | float | Score mínimo para finalizar | 0.75 | 0.1-1.0 |
+| `budget` | int | Presupuesto total | 100 | 1-5000 |
+
+### 📋 Casos de Uso Prácticos
+
+#### Caso 1: Análisis de Mercado
+
+```bash
+curl -X POST "http://localhost:8000/research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Análisis del mercado de fintech en México 2025: principales competidores, regulación y tendencias"
+  }'
+```
+
+**Tiempo estimado:** 45 segundos
+**Fuentes típicas:** 10-15 artículos
+
+#### Caso 2: Due Diligence Tecnológico
+
+```bash
+curl -X POST "http://localhost:8000/deep-research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Evaluación técnica de frameworks de IA: PyTorch vs TensorFlow vs JAX",
+    "max_iterations": 5,
+    "min_completion_score": 0.90
+  }'
+```
+
+**Tiempo estimado:** 4-5 minutos
+**Fuentes típicas:** 40-60 documentos
+
+#### Caso 3: Investigación Académica
+
+```bash
+curl -X POST "http://localhost:8000/deep-research" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "Estado del arte en modelos de lenguaje multimodales: arquitecturas, benchmarks y aplicaciones",
+    "max_iterations": 7,
+    "budget": 300
+  }'
+```
+
+**Tiempo estimado:** 6-8 minutos
+**Fuentes típicas:** 60-100 papers y artículos
+
+### 🔍 Monitoreo de Tareas
+
+#### Workflow completo con bash
+
+```bash
+#!/bin/bash
+# Script para ejecutar y monitorear una investigación
+
+# 1. Iniciar investigación
+RESPONSE=$(curl -s -X POST "http://localhost:8000/research" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Tu consulta aquí"}')
+
+# 2. Extraer task_id
+TASK_ID=$(echo $RESPONSE | jq -r '.task_id')
+echo "Task ID: $TASK_ID"
+
+# 3. Monitorear estado
+while true; do
+  STATUS=$(curl -s "http://localhost:8000/tasks/$TASK_ID/status" | jq -r '.status')
+  echo "Status: $STATUS"
+
+  if [ "$STATUS" == "completed" ]; then
+    break
+  fi
+
+  sleep 5
+done
+
+# 4. Obtener reporte
+curl -s "http://localhost:8000/reports/$TASK_ID" | jq -r '.report_md' > report.md
+echo "Reporte guardado en report.md"
+```
+
+### 📊 Respuestas de la API
+
+#### Formato de Reporte de Investigación Simple
+
+```json
+{
+  "status": "completed",
+  "report_md": "# Título del Reporte\n\n## Resumen Ejecutivo\n...",
+  "sources_bib": "Generated from 15 evidence sources",
+  "metrics_json": "{\"mock_metric\": 1.0}"
+}
+```
+
+#### Formato de Reporte de Deep Research
+
+```json
+{
+  "status": "completed",
+  "report_md": "# Análisis Profundo\n\n...",
+  "sources_bib": "Generated from 42 evidence sources",
+  "research_summary": {
+    "iterations_completed": 3,
+    "gaps_identified": ["regulatory_compliance", "market_impact"],
+    "key_findings": [
+      "High compliance costs",
+      "Market consolidation likely"
+    ]
+  },
+  "quality_metrics": {
+    "completion_level": 0.95,
+    "quality_score": 0.88,
+    "evidence_count": 42,
+    "execution_time": 127.3
+  }
+}
+```
+
+### 🛠 Testing y Troubleshooting
+
+#### Test Rápido de APIs
+
+```bash
+# Ejecutar suite de tests
+python3 tools/testing/test_apis.py
+
+# Test individual de Saptiva
+python3 tools/testing/test_saptiva_direct.py
+```
+
+#### Problemas Comunes
+
+**Error: "API key not configured"**
+```bash
+# Verificar que las keys estén configuradas
+cat .env | grep API_KEY
+
+# Deben estar presentes y no contener valores placeholder
+```
+
+**Error: "Timeout" o "Connection Error"**
+```bash
+# Verificar configuración de timeouts en .env
+SAPTIVA_CONNECT_TIMEOUT=30
+SAPTIVA_READ_TIMEOUT=120
+```
+
+**La API no responde**
+```bash
+# Verificar que el servidor esté corriendo
+curl http://localhost:8000/health
+
+# Si no responde, iniciar servidor
+uvicorn apps.api.main:app --reload
 ```
 
 ---

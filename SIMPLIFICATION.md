@@ -40,7 +40,7 @@ This document explains the recent simplification of the Aletheia Deep Research p
 # Only essentials
 SAPTIVA_API_KEY=your_key
 TAVILY_API_KEY=your_key
-SAPTIVA_BASE_URL=https://api.saptiva.ai/v1
+SAPTIVA_BASE_URL=https://api.saptiva.com/v1
 VECTOR_BACKEND=none
 ENVIRONMENT=development
 ```
