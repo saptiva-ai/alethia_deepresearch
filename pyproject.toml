@@ -7,7 +7,7 @@ name = "aletheia-deep-research"
 version = "0.2.0"
 description = "Deep research platform with Saptiva agents and Together AI patterns"
 authors = [{ name = "Aletheia Team", email = "team@aletheia.dev" }]
-license = "MIT"
+license = {text = "Apache-2.0"}
 readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["research", "ai", "saptiva", "deep-research", "agents"]

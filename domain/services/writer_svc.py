@@ -13,8 +13,15 @@ class WriterService:
         # As per README, Writer uses 'Saptiva Cortex'
         self.writer_model = os.getenv("SAPTIVA_MODEL_WRITER", "Saptiva Cortex")
 
-        # Initialize vector store for RAG
-        self.vector_store: VectorStorePort = WeaviateVectorAdapter()
+        # Initialize vector store based on configuration
+        vector_backend = os.getenv("VECTOR_BACKEND", "weaviate").lower()
+
+        if vector_backend == "none":
+            # Use Weaviate in mock mode (no connection attempts)
+            self.vector_store: VectorStorePort = WeaviateVectorAdapter(force_mock=True)
+        else:
+            # Initialize vector store for RAG
+            self.vector_store: VectorStorePort = WeaviateVectorAdapter()
 
     def write_report(self, query: str, evidence_list: list[Evidence]) -> str:
         """

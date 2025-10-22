@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from functools import lru_cache
 import os
 import time
@@ -19,7 +20,23 @@ from domain.services.writer_svc import WriterService
 # Load environment variables from .env file
 load_dotenv()
 
+# Global telemetry manager
+telemetry_manager: TelemetryManager | None = None
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan event handler for startup and shutdown."""
+    # Startup
+    global telemetry_manager
+    telemetry_manager = setup_telemetry()
+    yield
+    # Shutdown (if needed)
+    pass
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="Aletheia Deep Research API",
     description="""
     ## 🔍 API para análisis e investigación profunda
@@ -51,7 +68,7 @@ app = FastAPI(
         "url": "https://github.com/saptiva-ai/alethia_deepresearch",
         "email": "dev@saptiva.ai",
     },
-    license_info={"name": "MIT License", "url": "https://opensource.org/licenses/MIT"},
+    license_info={"name": "Apache 2.0", "url": "https://www.apache.org/licenses/LICENSE-2.0"},
     openapi_tags=[
         {"name": "health", "description": "Endpoints de estado y monitoreo del sistema"},
         {
@@ -67,17 +84,6 @@ app = FastAPI(
         {"name": "observability", "description": "Trazabilidad y métricas de rendimiento"},
     ],
 )
-
-telemetry_manager: TelemetryManager
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Initializes Telemetry."""
-    global telemetry_manager
-    telemetry_manager = setup_telemetry()
-    telemetry_manager.instrument_fastapi(app)
-
 
 # --- Data Models ---
 
@@ -264,7 +270,8 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
         )
 
         # Execute deep research
-        result = await orchestrator.execute_deep_research(request.query, tracer=telemetry_manager.get_tracer())
+        tracer = telemetry_manager.get_tracer() if telemetry_manager else None
+        result = await orchestrator.execute_deep_research(request.query, tracer=tracer)
 
         # Store result
         deep_research_tasks[task_id] = {

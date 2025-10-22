@@ -1,48 +1,58 @@
-# Core Framework
+# ========================================
+# Aletheia Deep Research - Core Dependencies
+# Minimal setup for production use
+# ========================================
+
+# === Core Framework ===
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 
-# HTTP Client
+# === HTTP Client ===
 httpx==0.25.2
 requests==2.31.0
 
-# Web Scraping
+# === Web Scraping ===
 beautifulsoup4==4.12.2
 
-# Data Models
+# === Data Models ===
 pydantic==2.5.0
 pydantic-settings==2.1.0
 
-# Search API
+# === Search API ===
 tavily-python==0.3.0
 
-# File Processing
+# === File Processing ===
 pyyaml==6.0.1
 
-# Document Processing
+# === Document Processing ===
 PyPDF2==3.0.1
 pdfplumber==0.10.3
 python-docx==1.1.0
 
-# OCR Processing (Optional)
-pytesseract==0.3.10
-Pillow==10.1.0
-
-# Environment Variables
+# === Environment Variables ===
 python-dotenv==1.0.0
 
-# Vector Database
-weaviate-client==3.25.3
-
-# Async utilities
+# === Async utilities ===
 aiofiles==23.2.1
 
-# Date utilities
+# === Date utilities ===
 python-dateutil==2.8.2
 
-# OpenTelemetry (Observability)
+# === Minimal Observability (kept for compatibility) ===
+# Note: Full features require optional packages
 opentelemetry-api==1.21.0
 opentelemetry-sdk==1.21.0
 opentelemetry-exporter-otlp==1.21.0
 opentelemetry-instrumentation-fastapi==0.42b0
 opentelemetry-instrumentation-httpx==0.42b0
+
+# === Vector Database (for mock mode compatibility) ===
+# Note: Can be removed if you're 100% sure you won't use Weaviate
+weaviate-client==3.25.3
+
+# ========================================
+# Optional Dependencies
+# ========================================
+# For OCR, advanced monitoring, etc.
+# See requirements-optional.txt
+# ========================================

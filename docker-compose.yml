@@ -1,0 +1,78 @@
+version: '3.8'
+
+# Aletheia Deep Research - Minimalist Docker Compose
+# Solo incluye el servicio API esencial
+
+networks:
+  aletheia-network:
+    driver: bridge
+
+services:
+  # API Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: aletheia-api
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8000}:8000"
+    environment:
+      # Saptiva Configuration
+      - SAPTIVA_API_KEY=${SAPTIVA_API_KEY}
+      - SAPTIVA_BASE_URL=${SAPTIVA_BASE_URL:-https://api.saptiva.ai/v1}
+      - SAPTIVA_MODEL_PLANNER=${SAPTIVA_MODEL_PLANNER:-SAPTIVA_OPS}
+      - SAPTIVA_MODEL_WRITER=${SAPTIVA_MODEL_WRITER:-SAPTIVA_CORTEX}
+      - SAPTIVA_MODEL_RESEARCHER=${SAPTIVA_MODEL_RESEARCHER:-SAPTIVA_OPS}
+
+      # Tavily Search Configuration
+      - TAVILY_API_KEY=${TAVILY_API_KEY}
+
+      # Vector Storage (disabled by default)
+      - VECTOR_BACKEND=none
+
+      # Application Configuration
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+    networks:
+      - aletheia-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      # Mount for artifacts/logs if needed
+      - ./runs:/app/runs
+
+  # --- Optional Services (commented out by default) ---
+
+  # Uncomment if you need Weaviate vector database
+  # weaviate:
+  #   image: semitechnologies/weaviate:1.21.8
+  #   container_name: aletheia-weaviate
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   environment:
+  #     AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+  #     PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+  #     DEFAULT_VECTORIZER_MODULE: 'none'
+  #   networks:
+  #     - aletheia-network
+
+  # Uncomment if you need OpenTelemetry observability
+  # jaeger:
+  #   image: jaegertracing/all-in-one:latest
+  #   container_name: aletheia-jaeger
+  #   ports:
+  #     - "16686:16686"
+  #     - "4317:4317"
+  #   environment:
+  #     - COLLECTOR_OTLP_ENABLED=true
+  #   networks:
+  #     - aletheia-network

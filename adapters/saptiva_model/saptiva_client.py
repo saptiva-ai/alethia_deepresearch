@@ -11,7 +11,8 @@ class SaptivaModelAdapter(ModelClientPort):
     def __init__(self):
         self.api_key = os.getenv("SAPTIVA_API_KEY")
         # Endpoint oficial según documentación de Saptiva
-        self.base_url = "https://api.saptiva.com/v1"
+        # Puede ser configurado via SAPTIVA_BASE_URL
+        self.base_url = os.getenv("SAPTIVA_BASE_URL", "https://api.saptiva.ai/v1")
         self.max_retries = 3
         self.retry_delay = 1.0
         # Configurable timeouts for Docker/production environments

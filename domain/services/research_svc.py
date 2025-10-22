@@ -1,6 +1,7 @@
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+import os
 
 from adapters.tavily_search.tavily_client import TavilySearchAdapter
 from adapters.weaviate_vector.weaviate_adapter import WeaviateVectorAdapter
@@ -19,14 +20,22 @@ class ResearchService:
             print(f"Disabling search functionality: {e}")
             self.search_enabled = False
 
-        # Initialize vector store for RAG
-        self.vector_store: VectorStorePort = WeaviateVectorAdapter()
+        # Initialize vector store based on configuration
+        vector_backend = os.getenv("VECTOR_BACKEND", "weaviate").lower()
 
-        # Check if vector store is healthy
-        if self.vector_store.health_check():
-            print("Weaviate vector store is healthy and ready.")
+        if vector_backend == "none":
+            # Use Weaviate in mock mode (no connection attempts)
+            self.vector_store: VectorStorePort = WeaviateVectorAdapter(force_mock=True)
+            print("Vector storage disabled - using mock storage (no Weaviate connection).")
         else:
-            print("Weaviate not available - using mock vector storage.")
+            # Initialize vector store for RAG
+            self.vector_store: VectorStorePort = WeaviateVectorAdapter()
+
+            # Check if vector store is healthy
+            if self.vector_store.health_check():
+                print("Weaviate vector store is healthy and ready.")
+            else:
+                print("Weaviate not available - using mock vector storage.")
 
     def execute_plan(self, plan: ResearchPlan) -> list[Evidence]:
         """

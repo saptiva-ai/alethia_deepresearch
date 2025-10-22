@@ -10,9 +10,17 @@ from ports.vector_store_port import VectorStorePort
 class WeaviateVectorAdapter(VectorStorePort):
     """Weaviate implementation of VectorStorePort using v3 API."""
 
-    def __init__(self):
+    def __init__(self, force_mock: bool = False):
         self.host = os.getenv("WEAVIATE_HOST", "http://localhost:8080")
-        self.mock_mode = False
+        self.mock_mode = force_mock
+        self.client = None
+
+        # Mock storage for when Weaviate is not available
+        self.mock_store: dict[str, list[dict]] = {}
+
+        # Skip connection if force_mock is enabled
+        if force_mock:
+            return
 
         try:
             # Try to connect to Weaviate using v3 API
@@ -26,9 +34,6 @@ class WeaviateVectorAdapter(VectorStorePort):
             print(f"Warning: Weaviate connection failed: {e}. Using mock mode.")
             self.mock_mode = True
             self.client = None
-
-        # Mock storage for when Weaviate is not available
-        self.mock_store: dict[str, list[dict]] = {}
 
     def store_evidence(self, evidence: Evidence, collection_name: str = "default") -> bool:
         """Store evidence in Weaviate or mock storage."""

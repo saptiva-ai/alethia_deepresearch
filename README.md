@@ -3,24 +3,39 @@
 [![CI Status](https://github.com/saptiva-ai/alethia_deepresearch/workflows/CI%20-%20Quality%20Checks/badge.svg)](https://github.com/saptiva-ai/alethia_deepresearch/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green.svg)](https://fastapi.tiangolo.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
 Aletheia es una plataforma de investigación asistida por agentes que separa claramente el
 *Dominio* de la orquestación y de las integraciones externas. El objetivo del repositorio es
 ofrecer un pipeline reproducible para planear, ejecutar y sintetizar investigaciones
-aprovechando modelos de lenguaje de Saptiva y fuentes externas (Tavily, documentos locales,
-vector stores, etc.).
+aprovechando modelos de lenguaje de Saptiva y fuentes externas (Tavily, documentos locales, etc.).
 
-> **Estado:** ✅ **En producción** - CI/CD pipeline funcional, deployment automatizado, API completamente operativa.
+> **Estado:** ✅ **En producción** - API completamente operativa, configuración minimalista, deployment simplificado.
+
+> 📝 **¿Vienes de una versión anterior?** El proyecto ha sido simplificado para setup instantáneo. Ver [SIMPLIFICATION.md](SIMPLIFICATION.md) para detalles de los cambios y guía de migración.
+
+## 🎯 Configuración Minimalista
+
+Este proyecto está optimizado para un **setup simple y directo**:
+
+✅ **Solo 2 API Keys requeridas**: Saptiva + Tavily
+✅ **Sin dependencias de servicios externos**: Sin bases de datos, sin contenedores obligatorios
+✅ **Python 3.11+ como único requisito** del sistema
+✅ **Docker opcional**: Funciona perfectamente sin contenedores
+✅ **Zero config**: Valores por defecto listos para producción
+
+**Tiempo de setup:** < 5 minutos desde cero
 
 ---
 
-## 🚀 Enlaces rápidos
+## 🚀 Enlaces Rápidos
 
-- **API Docs**: `/docs` (Swagger UI)
-- **Health Check**: `/health`
-- **Deployment**: Ver sección [Deployment](#-deployment)
-- **Architecture**: Ver [diagrama de arquitectura](#-arquitectura)
+- **[Configuración Rápida](#-configuración-rápida)**: Setup en < 5 minutos
+- **[API Docs](http://localhost:8000/docs)**: Swagger UI interactivo (cuando el servidor esté corriendo)
+- **[Health Check](http://localhost:8000/health)**: Verificar estado del sistema
+- **[Deployment](#-deployment)**: Guías de despliegue
+- **[Arquitectura](#-arquitectura)**: Diseño del sistema
+- **[SIMPLIFICATION.md](SIMPLIFICATION.md)**: Guía de la configuración minimalista
 
 ---
 
@@ -37,30 +52,61 @@ vector stores, etc.).
 
 ---
 
-## 🛠 Requisitos
+## 🛠 Requisitos Mínimos
 
-- **Python 3.11+** (requerido para sintaxis moderna de types)
-- **pip** y **virtualenv** para aislar dependencias
-- **Docker** (para deployment y servicios externos)
-- **API Keys**: Saptiva AI y Tavily (ver [Configuración](#%EF%B8%8F-configuración))
+### Esenciales (Requeridos)
+- **Python 3.11+** ⚠️ **REQUERIDO** - El proyecto usa sintaxis moderna de Python
+- **pip** y **virtualenv** para gestión de dependencias
+- **API Keys**:
+  - Saptiva AI: [Obtener key](https://saptiva.ai)
+  - Tavily Search: [Obtener key](https://tavily.com)
 
-### Servicios opcionales
-- **Tesseract OCR** (para extracción de texto de imágenes)
-- **Weaviate** (vector database)
-- **MinIO/S3** (almacenamiento de archivos)
-- **Jaeger** (observabilidad)
+### Opcionales (No requeridos por defecto)
+- **Docker** - Solo para deployment en contenedores
+- **Weaviate** - Solo si activas vector database (`VECTOR_BACKEND=weaviate`)
+- **Tesseract OCR** - Solo para procesamiento OCR de imágenes
+- **Jaeger** - Solo para trazabilidad distribuida avanzada
+
+> **Nota importante**: El sistema funciona completamente sin ningún servicio externo. La configuración minimalista es ideal para desarrollo y producción.
+
+### Verificar Python 3.11
+
+⚠️ **IMPORTANTE**: Verifica tu versión de Python antes de continuar:
+
+```bash
+python3.11 --version  # Debe mostrar Python 3.11.x o superior
+```
+
+**Si no tienes Python 3.11:**
+
+```bash
+# Ubuntu/Debian
+sudo apt update && sudo apt install python3.11 python3.11-venv python3.11-dev
+
+# macOS (Homebrew)
+brew install python@3.11
+```
 
 ---
 
-## ⚡ Configuración rápida
+## ⚡ Configuración Rápida
 
 ### 1. Clonar y configurar entorno
+
+⚠️ **IMPORTANTE: Usa `python3.11` explícitamente en todos los comandos**
 
 ```bash
 git clone https://github.com/saptiva-ai/alethia_deepresearch.git
 cd alethia_deepresearch
-python -m venv .venv
+
+# Crear entorno virtual con Python 3.11
+python3.11 -m venv .venv
+
+# Activar entorno virtual
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Verificar que estás usando Python 3.11
+python --version  # Debe mostrar Python 3.11.x
 ```
 
 ### 2. Instalar dependencias
@@ -80,125 +126,155 @@ cp .env.example .env
 Edita `.env` con tus API keys:
 
 ```bash
-# API Keys (requeridas para funcionalidad completa)
+# === REQUERIDO ===
 SAPTIVA_API_KEY=tu_clave_saptiva_aqui
 TAVILY_API_KEY=tu_clave_tavily_aqui
 
-# Configuración opcional
-WEAVIATE_HOST=http://localhost:8080
-OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+# === Configuración predeterminada (ya configurada) ===
+SAPTIVA_BASE_URL=https://api.saptiva.ai/v1
+VECTOR_BACKEND=none
+ENVIRONMENT=development
 ```
 
-### 4. Ejecutar la API
+**Nota**: Los demás valores ya tienen defaults apropiados. Solo necesitas las API keys.
+
+### 4. Verificar configuración (opcional pero recomendado)
 
 ```bash
+# Ejecutar script de verificación
+./scripts/check_python_version.sh
+```
+
+### 5. Ejecutar la API
+
+```bash
+# Asegúrate de que el entorno virtual esté activado
+python --version  # Debe mostrar Python 3.11.x
+
+# Ejecutar el servidor
 uvicorn apps.api.main:app --reload --port 8000
 ```
 
 🎉 **API disponible en:** http://localhost:8000/docs
 
+**Notas importantes:**
+- ✅ El servidor usa **modo minimalista** por defecto (sin Weaviate, sin servicios externos)
+- ✅ Si obtienes errores de sintaxis como `TypeError: unsupported operand type(s) for |`, estás usando Python < 3.10
+- ✅ Los warnings de Pydantic son normales y no afectan la funcionalidad
+
 ---
 
-## 🧪 Pruebas y calidad de código
+## 🧪 Pruebas y Calidad de Código
 
-El proyecto mantiene estándares altos de calidad con CI/CD automatizado:
+El proyecto mantiene estándares profesionales con CI/CD automatizado:
 
-### Ejecutar todas las verificaciones
+### Ejecutar verificaciones localmente
 
 ```bash
 # Linting y formato
 ruff check .
-ruff check . --fix  # Auto-fix issues
+ruff check . --fix  # Corregir problemas automáticamente
 
 # Type checking
 mypy domain/models --ignore-missing-imports
 
-# Tests unitarios (99 tests)
+# Tests unitarios (99 tests, sin servicios externos)
 pytest tests/unit/ -v --cov=domain --cov=adapters --cov=apps --cov-report=term-missing
 
-# Tests de integración (requiere servicios externos)
+# Tests de integración (requiere configurar API keys)
 pytest tests/integration/ -v
 ```
 
-### Pipeline CI/CD
+### Pipeline CI/CD Automatizado
 
-- ✅ **Linting**: Ruff + Black formatting
-- ✅ **Type checking**: MyPy validation
-- ✅ **Testing**: 99 unit tests with 23%+ coverage
-- ✅ **Security**: Bandit + Safety checks
-- ✅ **Build**: Multi-stage Docker builds
-- ✅ **Deployment**: Automated to staging/production
+El repositorio incluye verificaciones completas en cada push:
 
-Ver `.github/workflows/ci.yml` para detalles completos.
+- ✅ **Linting**: Ruff para calidad de código
+- ✅ **Type checking**: MyPy para validación de tipos
+- ✅ **Testing**: 99 unit tests con 23%+ cobertura
+- ✅ **Security**: Bandit + Safety para análisis de seguridad
+- ✅ **Build**: Docker multi-stage optimizado
+- ✅ **Deploy**: Automatización a staging/producción
+
+Ver `.github/workflows/ci.yml` para configuración completa.
 
 ---
 
 ## 🚀 Deployment
 
-### Opciones de deployment
+### Opción 1: Docker Compose (Recomendado para producción) ✅
 
-1. **[Servidor interno via SSH](#deployment-remoto-ssh)** ✅ **Recomendado**
-2. **[Docker local](#deployment-docker-local)**
-3. **[Kubernetes](#deployment-kubernetes)**
-4. **[GitHub Actions CD](#deployment-github-actions)**
-
-### Deployment remoto (SSH)
-
-Para servidores internos con acceso SSH:
+El método más simple y rápido:
 
 ```bash
-# 1. Configurar servidor (una sola vez)
-./scripts/deployment/setup-server.sh
+# 1. Configurar variables de entorno
+cp .env.example .env
+# Edita .env con tus API keys (Saptiva + Tavily)
 
-# 2. Desplegar aplicación
-./scripts/deployment/deploy-remote.sh --verbose
+# 2. Iniciar el servicio
+docker-compose up -d
 
-# 3. Verificar deployment
-curl http://YOUR_SERVER_IP:8000/health
+# 3. Verificar estado
+curl http://localhost:8000/health
 ```
 
-### Deployment Docker local
+**Acceso:**
+- API: http://localhost:8000
+- Documentación interactiva: http://localhost:8000/docs
+- Redoc: http://localhost:8000/redoc
+
+### Opción 2: Docker Build Manual
 
 ```bash
-# Build y deploy local
-./scripts/deployment/deploy-docker.sh \
-  --environment production \
-  --tag latest \
-  --port 8000
+# Build
+docker build -t aletheia-api .
+
+# Run
+docker run -d \
+  --name aletheia-api \
+  -p 8000:8000 \
+  --env-file .env \
+  aletheia-api
 ```
 
-### Deployment Kubernetes
+### Opción 3: Servidor Directo (SSH)
+
+Para servidores con acceso SSH:
 
 ```bash
-# Deploy a diferentes entornos
-./scripts/deployment/deploy.sh --environment development
-./scripts/deployment/deploy.sh --environment staging --tag v1.2.3
-./scripts/deployment/deploy.sh --environment production --tag v1.2.3 --dry-run
+# En el servidor remoto
+git clone https://github.com/saptiva-ai/alethia_deepresearch.git
+cd alethia_deepresearch
+python3.11 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Edita .env con tus keys
+
+# Ejecutar con systemd o supervisord
+uvicorn apps.api.main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
 
-### Configuración de producción
+### Configuración de Producción
 
-Para deployment en producción, configura estas variables:
+Ajustes recomendados para entornos de producción:
 
 ```bash
-# .env.production
-ENVIRONMENT=production
-DEBUG=false
-LOG_LEVEL=WARNING
-
-# API Keys (requeridas)
+# === API Keys (REQUERIDAS) ===
 SAPTIVA_API_KEY=your_production_key
 TAVILY_API_KEY=your_production_key
 
-# Performance
-API_WORKERS=4
-MAX_CONCURRENT_REQUESTS=100
-REQUEST_TIMEOUT=600
+# === Configuración de producción ===
+ENVIRONMENT=production
+DEBUG=false
+LOG_LEVEL=WARNING
+API_RELOAD=false
 
-# Monitoring
-ENABLE_TELEMETRY=true
-METRICS_ENABLED=true
+# === Servicios opcionales (deshabilitados por defecto) ===
+VECTOR_BACKEND=none  # Cambiar a 'weaviate' solo si lo necesitas
 ```
+
+**Nota**: El sistema funciona perfectamente sin servicios adicionales (Weaviate, Jaeger, etc.).
 
 ---
 
@@ -215,23 +291,31 @@ METRICS_ENABLED=true
 | `/reports/{task_id}` | GET | Reporte final generado |
 | `/traces/{task_id}` | GET | Trazas de telemetría |
 
-### Ejemplo de uso
+### Ejemplos de uso
 
 ```bash
-# Investigación simple
+# 1. Investigación simple (optimizada para rapidez)
 curl -X POST "http://localhost:8000/research" \
   -H "Content-Type: application/json" \
-  -d '{"query": "Latest AI trends 2024"}'
+  -d '{"query": "Latest developments in quantum computing 2025"}'
 
 # Respuesta
 {
-  "task_id": "abc-123-def",
+  "task_id": "task-abc123",
   "status": "accepted",
-  "details": "Research task accepted with parallel processing"
+  "message": "Research task initiated"
 }
 
-# Verificar estado
-curl "http://localhost:8000/tasks/abc-123-def/status"
+# 2. Verificar estado de la tarea
+curl "http://localhost:8000/tasks/task-abc123/status"
+
+# 3. Obtener reporte final
+curl "http://localhost:8000/reports/task-abc123"
+
+# 4. Investigación profunda (iterativa con múltiples refinamientos)
+curl -X POST "http://localhost:8000/deep-research" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Impact of AI regulation on startup ecosystems", "max_iterations": 3}'
 ```
 
 ---
@@ -333,9 +417,15 @@ flowchart TD
 - **🏛 Clean Architecture**: Separación clara entre dominio, puertos y adapters
 - **🔌 Dependency Inversion**: Abstracciones estables, implementaciones intercambiables
 - **🧪 Testability**: 99 unit tests, mocking de dependencias externas
-- **📊 Observability**: OpenTelemetry integration, structured logging
 - **⚡ Performance**: Procesamiento paralelo, optimizaciones asíncronas
-- **🛡 Resilience**: Graceful degradation, retry mechanisms
+- **🛡 Resilience**: Graceful degradation, retry mechanisms, modo fallback
+- **🎯 Simplicity**: Configuración minimalista, servicios externos opcionales
+
+**Modo Minimalista por defecto:**
+- Vector storage opera en modo mock (sin Weaviate)
+- Evidence se almacena en memoria durante la sesión
+- No hay impacto en rendimiento del pipeline de investigación
+- Todas las funcionalidades operan normalmente
 
 ---
 
@@ -367,21 +457,17 @@ alethia_deepresearch/
 └── docs/                  # Documentation
 ```
 
-### Scripts útiles
+### Scripts disponibles
 
 ```bash
-# Development
-./scripts/development/setup.sh        # Setup desarrollo local
-./scripts/development/test.sh         # Run full test suite
+# Verificación de Python
+./scripts/check_python_version.sh      # Verificar Python 3.11+
 
-# Deployment
-./scripts/deployment/setup-server.sh  # Configurar servidor remoto
-./scripts/deployment/deploy-remote.sh # Deploy via SSH
-./scripts/deployment/deploy-docker.sh # Deploy local Docker
-
-# Utilities
-./scripts/utils/health-check.sh       # Verificar salud del sistema
-./scripts/utils/backup.sh             # Backup de datos
+# Deployment scripts
+./scripts/deployment/setup-server.sh   # Configurar servidor remoto
+./scripts/deployment/deploy-remote.sh  # Deploy via SSH
+./scripts/deployment/deploy-docker.sh  # Deploy con Docker local
+./scripts/deployment/deploy.sh         # Deploy general
 ```
 
 ### Configuración de desarrollo
@@ -399,15 +485,18 @@ export ENVIRONMENT=development
 
 ---
 
-## 📊 Monitoreo y observabilidad
+## 📊 Monitoreo y Observabilidad
 
-### Health checks
+### Health Check
+
+El endpoint de salud proporciona información completa del sistema:
 
 ```bash
-# Health endpoint básico
 curl http://localhost:8000/health
+```
 
-# Respuesta
+**Respuesta:**
+```json
 {
   "status": "healthy",
   "service": "Aletheia Deep Research API",
@@ -415,25 +504,35 @@ curl http://localhost:8000/health
   "api_keys": {
     "saptiva_available": true,
     "tavily_available": true
-  },
-  "timestamp": 1757976601.2687306
+  }
 }
 ```
 
-### Logs estructurados
+### Logs Estructurados
 
-- **Formato**: JSON structured logging
+El sistema incluye logging completo sin dependencias externas:
+
+- **Formato**: Console output estructurado (JSON opcional)
 - **Niveles**: DEBUG, INFO, WARNING, ERROR
-- **Correlación**: Task IDs para tracking
-- **Telemetría**: OpenTelemetry integration
+- **Task IDs**: Tracking automático de todas las requests
+- **Timestamps**: Información temporal precisa
 
-### Métricas disponibles
+### Observabilidad Avanzada (100% Opcional)
 
-- Request/response times
-- API success/failure rates
-- Task completion rates
-- Evidence collection metrics
-- Resource utilization
+Si necesitas trazabilidad distribuida o métricas detalladas:
+
+```bash
+# 1. Instalar dependencias opcionales
+pip install -r requirements-optional.txt
+
+# 2. Habilitar servicios en docker-compose.yml
+# (Descomentar secciones de Jaeger/OpenTelemetry)
+
+# 3. Configurar en .env
+OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4317
+```
+
+**Nota**: La configuración minimalista incluye OpenTelemetry básico sin servicios externos.
 
 ---
 
@@ -463,25 +562,28 @@ curl http://localhost:8000/health
 
 ---
 
-## 📚 Recursos adicionales
+## 📚 Recursos Adicionales
 
-- **[Documentación completa](docs/)**: Guías detalladas y ejemplos
-- **[API Reference](http://localhost:8000/docs)**: Swagger UI interactivo
-- **[Architecture Deep Dive](docs/architecture.md)**: Decisiones de diseño
-- **[Deployment Guide](docs/deployment.md)**: Guía completa de deployment
-- **[Contributing Guide](docs/contributing.md)**: Guía para contribuidores
+### Documentación
 
-### Enlaces útiles
+- **[API Reference](http://localhost:8000/docs)**: Swagger UI interactivo con ejemplos
+- **[ReDoc](http://localhost:8000/redoc)**: Documentación alternativa de la API
+- **[Documentación técnica](docs/)**: Guías detalladas y ejemplos en el directorio docs/
+- **[SIMPLIFICATION.md](SIMPLIFICATION.md)**: Guía de la configuración minimalista
 
-- **Issues**: [GitHub Issues](https://github.com/saptiva-ai/alethia_deepresearch/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/saptiva-ai/alethia_deepresearch/discussions)
-- **Releases**: [GitHub Releases](https://github.com/saptiva-ai/alethia_deepresearch/releases)
+### Enlaces Útiles
+
+- **[GitHub Issues](https://github.com/saptiva-ai/alethia_deepresearch/issues)**: Reportar bugs o solicitar features
+- **[GitHub Discussions](https://github.com/saptiva-ai/alethia_deepresearch/discussions)**: Preguntas y discusiones
+- **[Releases](https://github.com/saptiva-ai/alethia_deepresearch/releases)**: Historial de versiones
 
 ---
 
 ## 📄 Licencia
 
-MIT License - ver [LICENSE](LICENSE) para más detalles.
+Apache License 2.0 - ver [LICENSE](LICENSE) para más detalles.
+
+Copyright 2025 Saptiva Inc.
 
 ---
 
