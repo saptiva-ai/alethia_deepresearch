@@ -84,7 +84,9 @@ HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
 EXPOSE 8000
 
 # Production command
-CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "4"]
+# Note: Using --workers 1 to enable in-memory task storage
+# For production with multiple workers, implement shared storage (Redis/Database)
+CMD ["uvicorn", "apps.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
 
 # Default target is production
 FROM production

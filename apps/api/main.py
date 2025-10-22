@@ -392,7 +392,7 @@ async def start_research(request: ResearchRequest, background_tasks: BackgroundT
 
     task_id = str(uuid.uuid4())
     tasks[task_id] = {"status": "accepted", "started_at": time.time()}
-    background_tasks.add_task(run_real_research_pipeline_sync, task_id, request.query)
+    background_tasks.add_task(run_real_research_pipeline, task_id, request.query)
 
     return TaskStatus(
         task_id=task_id,
