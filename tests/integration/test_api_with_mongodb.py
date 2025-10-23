@@ -1,9 +1,9 @@
 """Integration tests for API with MongoDB."""
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch
-import time
 
 
 @pytest.fixture

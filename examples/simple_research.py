@@ -11,8 +11,9 @@ Uso:
 
 import sys
 import time
-import requests
 from datetime import datetime
+
+import requests
 
 
 def check_api_health(api_url: str) -> bool:
@@ -102,7 +103,7 @@ def main():
 
     try:
         task_id = start_research(API_URL, QUERY)
-        print(f"✅ Investigación iniciada")
+        print("✅ Investigación iniciada")
         print(f"   Task ID: {task_id}")
     except Exception as e:
         print(f"❌ Error al iniciar investigación: {e}")
@@ -129,7 +130,7 @@ def main():
         print("📊 RESUMEN")
         print("=" * 60)
         print(f"Task ID:    {task_id}")
-        print(f"Status:     ✅ Completado")
+        print("Status:     ✅ Completado")
         print(f"Fuentes:    {sources}")
         print(f"Reporte:    {filename}")
 

@@ -1,25 +1,21 @@
-from contextlib import asynccontextmanager
-from functools import lru_cache
 import os
 import time
 import uuid
+from contextlib import asynccontextmanager
+from functools import lru_cache
 
 from dotenv import load_dotenv
-from fastapi import BackgroundTasks, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
 from pydantic import BaseModel, Field
 
-# Initialize observability early
-from adapters.telemetry.tracing import TelemetryManager, setup_telemetry
-
-# Database
 from adapters.mongodb import MongoDBDatabase
-from ports.database_port import DatabasePort
-
-# Domain Services
+from adapters.telemetry.tracing import TelemetryManager, setup_telemetry
+from adapters.websocket.progress_manager import get_progress_manager
 from domain.services.iterative_research_svc import IterativeResearchOrchestrator
 from domain.services.planner_svc import PlannerService
 from domain.services.research_svc import ResearchService
 from domain.services.writer_svc import WriterService
+from ports.database_port import DatabasePort
 
 # Load environment variables from .env file
 load_dotenv()
@@ -211,7 +207,7 @@ tasks = {}
 deep_research_tasks = {}
 
 # --- Performance Optimizations ---
-_health_check_cache = {"status": "healthy", "last_check": 0}
+_health_check_cache = {"status": "healthy", "api_keys": {}, "last_check": 0}
 HEALTH_CACHE_TTL = 30  # Cache health status for 30 seconds
 
 
@@ -329,9 +325,9 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
             budget=request.budget,
         )
 
-        # Execute deep research
+        # Execute deep research with task_id for WebSocket updates
         tracer = telemetry_manager.get_tracer() if telemetry_manager else None
-        result = await orchestrator.execute_deep_research(request.query, tracer=tracer)
+        result = await orchestrator.execute_deep_research(request.query, tracer=tracer, task_id=task_id)
 
         # Store result
         summary = orchestrator.get_research_summary(result)
@@ -339,12 +335,11 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
         if db:
             await db.update_task(task_id, {
                 "status": "completed",
-                "result": result,
                 "summary": summary
             })
             # Store deep research report
             await db.create_report(task_id, {
-                "content": str(result),
+                "content": result.final_report,
                 "summary": summary,
                 "query": request.query,
                 "type": "deep_research"
@@ -353,7 +348,7 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
             await db.create_log({
                 "task_id": task_id,
                 "level": "INFO",
-                "message": f"Deep research completed successfully"
+                "message": "Deep research completed successfully"
             })
         else:
             deep_research_tasks[task_id] = {
@@ -417,6 +412,7 @@ async def health_check():
             "status": _health_check_cache["status"],
             "service": "Aletheia Deep Research API",
             "version": "0.2.0",
+            "api_keys": _health_check_cache["api_keys"],
             "cached": True,
         }
 
@@ -426,6 +422,7 @@ async def health_check():
 
     # Update cache
     _health_check_cache["status"] = health_status
+    _health_check_cache["api_keys"] = api_status
     _health_check_cache["last_check"] = current_time
 
     return {
@@ -799,7 +796,7 @@ async def get_deep_research_report(task_id: str):
             return DeepResearchReport(
                 status="completed",
                 report_md=report.get("content") if report else str(result),
-                sources_bib=f"Generated from deep research",
+                sources_bib="Generated from deep research",
                 research_summary=summary,
                 quality_metrics={
                     "completion_level": 1.0,
@@ -828,3 +825,82 @@ async def get_deep_research_report(task_id: str):
         return DeepResearchReport(status="failed", report_md=f"Deep research failed: {task.get('error', 'Unknown error')}")
     else:
         return DeepResearchReport(status=task["status"])
+
+
+# --- WebSocket Endpoint for Real-Time Progress ---
+
+
+@app.websocket("/ws/progress/{task_id}")
+async def websocket_progress(websocket: WebSocket, task_id: str):
+    """
+    WebSocket endpoint for real-time progress updates during deep research.
+
+    ### Usage:
+    ```python
+    import websockets
+    import json
+
+    async with websockets.connect("ws://localhost:8000/ws/progress/{task_id}") as ws:
+        while True:
+            message = await ws.recv()
+            update = json.loads(message)
+            print(f"[{update['event_type']}] {update['message']}")
+    ```
+
+    ### Update Format:
+    ```json
+    {
+        "task_id": "550e8400-...",
+        "timestamp": "2025-10-22T10:30:00Z",
+        "event_type": "iteration",
+        "message": "Starting iteration 2/3",
+        "data": {"iteration": 2, "max_iterations": 3}
+    }
+    ```
+
+    ### Event Types:
+    - `started`: Research has started
+    - `planning`: Research plan created
+    - `iteration`: New iteration started
+    - `evidence`: Evidence collected
+    - `evaluation`: Completion score calculated
+    - `gap_analysis`: Information gaps identified
+    - `refinement`: Refinement queries generated
+    - `report_generation`: Final report being generated
+    - `completed`: Research completed successfully
+    - `failed`: Research failed with error
+    """
+    import asyncio
+
+    progress_manager = get_progress_manager()
+
+    try:
+        # Connect the WebSocket
+        await progress_manager.connect(websocket, task_id)
+
+        # Keep connection alive - don't block waiting for messages
+        while True:
+            try:
+                # Use wait_for with short timeout to not block
+                # This allows the event loop to process broadcasts from ProgressManager
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
+
+                # Echo back for testing
+                if data == "ping":
+                    await websocket.send_text("pong")
+
+            except asyncio.TimeoutError:
+                # Timeout is normal - just continue to keep connection alive
+                # This allows ProgressManager.broadcast() to send updates
+                continue
+
+            except WebSocketDisconnect:
+                print(f"WebSocket disconnected for task {task_id}")
+                break
+
+    except Exception as e:
+        print(f"WebSocket error for task {task_id}: {e}")
+
+    finally:
+        # Cleanup on disconnect
+        await progress_manager.disconnect(websocket, task_id)

@@ -1,8 +1,9 @@
 """Unit tests for MongoDB adapter."""
 
-import pytest
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from adapters.mongodb.mongodb_database import MongoDBDatabase
 

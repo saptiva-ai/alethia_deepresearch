@@ -7,6 +7,7 @@ from typing import Any
 from opentelemetry import trace
 
 from adapters.telemetry.events import get_event_logger
+from adapters.websocket.progress_manager import ProgressUpdate, get_progress_manager
 
 # Telemetry imports
 from adapters.telemetry.tracing import trace_async_operation, trace_operation
@@ -73,9 +74,16 @@ class IterativeResearchOrchestrator:
         self.writer = WriterService()
 
     @trace_async_operation("deep_research.execute", {"research_type": "iterative"})
-    async def execute_deep_research(self, query: str, tracer: trace.Tracer | None = None) -> DeepResearchResult:
+    async def execute_deep_research(
+        self, query: str, tracer: trace.Tracer | None = None, task_id: str | None = None
+    ) -> DeepResearchResult:
         """
         Execute iterative deep research following Together AI pattern.
+
+        Args:
+            query: The research query
+            tracer: Optional OpenTelemetry tracer
+            task_id: Optional task ID for WebSocket progress updates
         """
         start_time = datetime.utcnow()
         iterations = []
@@ -83,8 +91,12 @@ class IterativeResearchOrchestrator:
 
         # Initialize event logging
         event_logger = get_event_logger()
-        task_id = f"deep_research_{int(start_time.timestamp())}"
+        if task_id is None:
+            task_id = f"deep_research_{int(start_time.timestamp())}"
         event_logger.set_task_context(task_id)
+
+        # Get progress manager for WebSocket updates
+        progress_manager = get_progress_manager()
 
         # Log research start
         event_logger.log_research_started(
@@ -100,6 +112,20 @@ class IterativeResearchOrchestrator:
         print(f"🚀 Starting iterative deep research for: '{query}'")
         print(f"📊 Configuration: max_iterations={self.max_iterations}, min_score={self.min_completion_score}")
 
+        # Send start update
+        await progress_manager.broadcast(
+            ProgressUpdate.create(
+                task_id,
+                "started",
+                f"Starting deep research: {query}",
+                {
+                    "max_iterations": self.max_iterations,
+                    "min_completion_score": self.min_completion_score,
+                    "budget": self.budget,
+                },
+            )
+        )
+
         # Initial research iteration
         with trace_operation("deep_research.planning", {"query_length": len(query)}, tracer=tracer) as span:
             initial_plan = self.planner.create_plan(query)
@@ -108,8 +134,28 @@ class IterativeResearchOrchestrator:
         event_logger.log_plan_created(task_id, query, len(initial_plan.sub_tasks))
         print(f"📋 Initial plan created with {len(initial_plan.sub_tasks)} sub-tasks")
 
+        # Send planning update
+        await progress_manager.broadcast(
+            ProgressUpdate.create(
+                task_id,
+                "planning",
+                f"Research plan created with {len(initial_plan.sub_tasks)} sub-tasks",
+                {"subtask_count": len(initial_plan.sub_tasks)},
+            )
+        )
+
         for iteration_num in range(1, self.max_iterations + 1):
             print(f"\n🔄 === ITERATION {iteration_num} ===")
+
+            # Send iteration start update
+            await progress_manager.broadcast(
+                ProgressUpdate.create(
+                    task_id,
+                    "iteration",
+                    f"Starting iteration {iteration_num}/{self.max_iterations}",
+                    {"iteration": iteration_num, "max_iterations": self.max_iterations},
+                )
+            )
 
             # Log iteration start
             iteration_queries = []
@@ -136,9 +182,37 @@ class IterativeResearchOrchestrator:
             print(f"🔍 Collected {len(iteration_evidence)} new evidence items")
             print(f"📈 Total evidence: {len(all_evidence)} items")
 
+            # Send evidence collection update
+            await progress_manager.broadcast(
+                ProgressUpdate.create(
+                    task_id,
+                    "evidence",
+                    f"Collected {len(iteration_evidence)} new evidence items (total: {len(all_evidence)})",
+                    {
+                        "new_evidence": len(iteration_evidence),
+                        "total_evidence": len(all_evidence),
+                        "iteration": iteration_num,
+                    },
+                )
+            )
+
             # Evaluate research completeness
             completion_score = self.evaluator.evaluate_research_completeness(query, all_evidence)
             print(f"📊 Completion Score: {completion_score.overall_score:.2f} ({completion_score.completion_level})")
+
+            # Send evaluation update
+            await progress_manager.broadcast(
+                ProgressUpdate.create(
+                    task_id,
+                    "evaluation",
+                    f"Completion score: {completion_score.overall_score:.2%} ({completion_score.completion_level})",
+                    {
+                        "score": completion_score.overall_score,
+                        "level": completion_score.completion_level,
+                        "iteration": iteration_num,
+                    },
+                )
+            )
 
             # Create iteration record
             iteration = ResearchIteration(
@@ -160,8 +234,31 @@ class IterativeResearchOrchestrator:
                 gaps = self.evaluator.identify_information_gaps(query, all_evidence)
                 print(f"🎯 Found {len(gaps)} information gaps")
 
+                # Send gap analysis update
+                await progress_manager.broadcast(
+                    ProgressUpdate.create(
+                        task_id,
+                        "gap_analysis",
+                        f"Identified {len(gaps)} information gaps",
+                        {
+                            "gap_count": len(gaps),
+                            "gaps": [{"type": g.gap_type, "priority": g.priority} for g in gaps[:3]],
+                        },
+                    )
+                )
+
                 refinement_queries = self.evaluator.generate_refinement_queries(gaps, query)
                 print(f"🎯 Generated {len(refinement_queries)} refinement queries")
+
+                # Send refinement update
+                await progress_manager.broadcast(
+                    ProgressUpdate.create(
+                        task_id,
+                        "refinement",
+                        f"Generated {len(refinement_queries)} refinement queries for next iteration",
+                        {"refinement_count": len(refinement_queries)},
+                    )
+                )
 
                 iteration.gaps_identified = gaps
                 iteration.refinement_queries = refinement_queries
@@ -174,6 +271,14 @@ class IterativeResearchOrchestrator:
 
         # Generate final report
         print("\n📝 Generating final report...")
+
+        # Send report generation update
+        await progress_manager.broadcast(
+            ProgressUpdate.create(
+                task_id, "report_generation", "Generating final report...", {"evidence_count": len(all_evidence)}
+            )
+        )
+
         with trace_operation("deep_research.report_generation", {"evidence_count": len(all_evidence)}, tracer=tracer) as span:
             final_report = self.writer.write_report(query, all_evidence)
             span.set_attribute("report.length", len(final_report))
@@ -199,6 +304,22 @@ class IterativeResearchOrchestrator:
         print("\n🎉 Deep research completed!")
         print(f"📊 Final Stats: {len(all_evidence)} evidence items, {len(iterations)} iterations, {execution_time:.1f}s")
         print(f"🏆 Quality Score: {result.research_quality_score:.2f} ({result.completion_level})")
+
+        # Send completion update
+        await progress_manager.broadcast(
+            ProgressUpdate.create(
+                task_id,
+                "completed",
+                f"Deep research completed! {len(all_evidence)} evidence items, quality score: {result.research_quality_score:.2%}",
+                {
+                    "total_evidence": len(all_evidence),
+                    "iterations_completed": len(iterations),
+                    "quality_score": result.research_quality_score,
+                    "completion_level": result.completion_level,
+                    "execution_time": execution_time,
+                },
+            )
+        )
 
         return result
 

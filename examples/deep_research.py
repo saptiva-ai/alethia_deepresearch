@@ -16,12 +16,15 @@ Uso:
     python examples/deep_research.py --iterations 5 --min-score 0.9 "Tu consulta"
 """
 
+import argparse
+import asyncio
+import json
 import sys
 import time
-import argparse
+
 import requests
+import websockets
 from datetime import datetime
-from typing import Optional
 
 
 class DeepResearchClient:
@@ -72,8 +75,8 @@ class DeepResearchClient:
         response.raise_for_status()
         return response.json()
 
-    def monitor_research(self, task_id: str, max_wait_minutes: int = 10) -> Optional[dict]:
-        """Monitorea el progreso de una investigación profunda"""
+    def monitor_research(self, task_id: str, max_wait_minutes: int = 10) -> dict | None:
+        """Monitorea el progreso de una investigación profunda (método legacy sin WebSocket)"""
         max_attempts = max_wait_minutes * 12  # Check every 5 seconds
         start_time = time.time()
 
@@ -100,6 +103,96 @@ class DeepResearchClient:
 
         print("❌ Timeout: La investigación tardó demasiado")
         return None
+
+    async def monitor_research_websocket(self, task_id: str, max_wait_minutes: int = 10) -> dict | None:
+        """
+        Monitorea el progreso de una investigación profunda usando WebSocket para actualizaciones en tiempo real.
+
+        Returns:
+            El resultado final de la investigación o None si falla
+        """
+        # Convert http:// to ws://
+        ws_url = self.api_url.replace("http://", "ws://").replace("https://", "wss://")
+        ws_endpoint = f"{ws_url}/ws/progress/{task_id}"
+
+        start_time = time.time()
+        max_wait_seconds = max_wait_minutes * 60
+
+        print(f"   📡 Conectando a WebSocket: {ws_endpoint}")
+
+        try:
+            async with websockets.connect(ws_endpoint, ping_interval=20, ping_timeout=10) as websocket:
+                print("   ✅ WebSocket conectado - recibiendo actualizaciones en tiempo real\n")
+
+                while True:
+                    # Check timeout
+                    elapsed = time.time() - start_time
+                    if elapsed > max_wait_seconds:
+                        print(f"\n❌ Timeout: La investigación tardó más de {max_wait_minutes} minutos")
+                        return None
+
+                    try:
+                        # Wait for message with timeout
+                        message = await asyncio.wait_for(websocket.recv(), timeout=30.0)
+                        update = json.loads(message)
+
+                        # Format and display the update
+                        event_type = update.get("event_type", "unknown")
+                        message_text = update.get("message", "")
+                        timestamp = update.get("timestamp", "")
+                        data = update.get("data", {})
+
+                        # Display with emoji based on event type
+                        emoji_map = {
+                            "started": "🚀",
+                            "planning": "📋",
+                            "iteration": "🔄",
+                            "evidence": "🔍",
+                            "evaluation": "📊",
+                            "gap_analysis": "🎯",
+                            "refinement": "🔧",
+                            "report_generation": "📝",
+                            "completed": "✅",
+                            "failed": "❌",
+                        }
+                        emoji = emoji_map.get(event_type, "ℹ️")
+
+                        print(f"   {emoji} [{elapsed:.1f}s] {message_text}")
+
+                        # Show additional data for some events
+                        if event_type == "evaluation" and data:
+                            score = data.get("score", 0)
+                            print(f"      └─ Score: {score:.2%}")
+
+                        if event_type == "gap_analysis" and data:
+                            gaps = data.get("gaps", [])
+                            if gaps:
+                                print(f"      └─ Top gaps: {', '.join([g['type'] for g in gaps[:2]])}")
+
+                        # Check if completed or failed
+                        if event_type == "completed":
+                            print(f"\n✅ Investigación completada en {elapsed:.1f}s")
+                            # Get final result
+                            return self.get_status(task_id)
+
+                        elif event_type == "failed":
+                            error = data.get("error", "Unknown error")
+                            print(f"\n❌ La investigación falló: {error}")
+                            return None
+
+                    except asyncio.TimeoutError:
+                        # No message in 30s, send ping
+                        await websocket.send("ping")
+                        continue
+
+        except websockets.exceptions.WebSocketException as e:
+            print(f"\n⚠️  Error de WebSocket: {e}")
+            print("   Volviendo a polling tradicional...")
+            return self.monitor_research(task_id, max_wait_minutes)
+
+        except Exception as e:
+            print(f"\n⚠️  Error inesperado: {e}")
+            return None
 
 
 def format_quality_metrics(metrics: dict) -> str:
@@ -146,9 +239,10 @@ def save_report(report_md: str, query: str) -> str:
     return filename
 
 
-def main():
+async def async_main():
+    """Función asíncrona principal que usa WebSocket para monitoreo en tiempo real."""
     parser = argparse.ArgumentParser(
-        description="Aletheia Deep Research - Deep Research Example"
+        description="Aletheia Deep Research - Deep Research Example with WebSocket"
     )
     parser.add_argument(
         "query",
@@ -211,17 +305,17 @@ def main():
             min_completion_score=args.min_score,
             budget=args.budget
         )
-        print(f"\n✅ Deep Research iniciado")
+        print("\n✅ Deep Research iniciado")
         print(f"   Task ID: {task_id}")
     except Exception as e:
         print(f"❌ Error al iniciar: {e}")
         sys.exit(1)
 
-    # 3. Monitor progress
-    print("\n3️⃣  Monitoreando progreso (esto puede tomar varios minutos)...")
-    print("   ⏳ Esperando... (Ctrl+C para cancelar)")
+    # 3. Monitor progress with WebSocket
+    print("\n3️⃣  Monitoreando progreso en tiempo real (esto puede tomar varios minutos)...")
+    print("   📡 Usando WebSocket para actualizaciones instantáneas... (Ctrl+C para cancelar)\n")
 
-    result = client.monitor_research(task_id, max_wait_minutes=10)
+    result = await client.monitor_research_websocket(task_id, max_wait_minutes=10)
 
     if not result:
         sys.exit(1)
@@ -259,9 +353,10 @@ def main():
     print("=" * 70)
 
 
-if __name__ == "__main__":
+def main():
+    """Wrapper síncrono para ejecutar la función asíncrona."""
     try:
-        main()
+        asyncio.run(async_main())
     except KeyboardInterrupt:
         print("\n\n⚠️  Interrumpido por el usuario")
         sys.exit(1)
@@ -270,3 +365,7 @@ if __name__ == "__main__":
         import traceback
         traceback.print_exc()
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

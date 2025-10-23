@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.errors import ConnectionFailure, OperationFailure
@@ -23,7 +23,7 @@ class MongoDBDatabase(DatabasePort):
         """
         self.connection_url = connection_url
         self.database_name = database_name
-        self.client: Optional[AsyncIOMotorClient] = None
+        self.client: AsyncIOMotorClient | None = None
         self.db = None
         self._initialized = False
 
@@ -57,7 +57,7 @@ class MongoDBDatabase(DatabasePort):
 
     # === Task Operations ===
 
-    async def create_task(self, task_id: str, task_data: Dict[str, Any]) -> bool:
+    async def create_task(self, task_id: str, task_data: dict[str, Any]) -> bool:
         """Create a new task record."""
         if not self._initialized:
             await self.initialize()
@@ -78,7 +78,7 @@ class MongoDBDatabase(DatabasePort):
             logger.error(f"Failed to create task {task_id}: {e}")
             return False
 
-    async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+    async def get_task(self, task_id: str) -> dict[str, Any] | None:
         """Retrieve a task by ID."""
         if not self._initialized:
             await self.initialize()
@@ -94,7 +94,7 @@ class MongoDBDatabase(DatabasePort):
             logger.error(f"Failed to get task {task_id}: {e}")
             return None
 
-    async def update_task(self, task_id: str, task_data: Dict[str, Any]) -> bool:
+    async def update_task(self, task_id: str, task_data: dict[str, Any]) -> bool:
         """Update an existing task."""
         if not self._initialized:
             await self.initialize()
@@ -137,10 +137,10 @@ class MongoDBDatabase(DatabasePort):
 
     async def list_tasks(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List tasks with optional filtering."""
         if not self._initialized:
             await self.initialize()
@@ -165,7 +165,7 @@ class MongoDBDatabase(DatabasePort):
 
     # === Report Operations ===
 
-    async def create_report(self, task_id: str, report_data: Dict[str, Any]) -> bool:
+    async def create_report(self, task_id: str, report_data: dict[str, Any]) -> bool:
         """Create or update a research report."""
         if not self._initialized:
             await self.initialize()
@@ -192,7 +192,7 @@ class MongoDBDatabase(DatabasePort):
             logger.error(f"Failed to create report for task {task_id}: {e}")
             return False
 
-    async def get_report(self, task_id: str) -> Optional[Dict[str, Any]]:
+    async def get_report(self, task_id: str) -> dict[str, Any] | None:
         """Retrieve a report by task ID."""
         if not self._initialized:
             await self.initialize()
@@ -212,7 +212,7 @@ class MongoDBDatabase(DatabasePort):
         self,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """List all reports."""
         if not self._initialized:
             await self.initialize()
@@ -233,7 +233,7 @@ class MongoDBDatabase(DatabasePort):
 
     # === Log Operations ===
 
-    async def create_log(self, log_data: Dict[str, Any]) -> bool:
+    async def create_log(self, log_data: dict[str, Any]) -> bool:
         """Create a log entry."""
         if not self._initialized:
             await self.initialize()
@@ -253,13 +253,13 @@ class MongoDBDatabase(DatabasePort):
 
     async def get_logs(
         self,
-        task_id: Optional[str] = None,
-        level: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        task_id: str | None = None,
+        level: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Retrieve logs with optional filtering."""
         if not self._initialized:
             await self.initialize()

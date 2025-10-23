@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class DatabasePort(ABC):
@@ -9,7 +9,7 @@ class DatabasePort(ABC):
     # === Task Operations ===
 
     @abstractmethod
-    async def create_task(self, task_id: str, task_data: Dict[str, Any]) -> bool:
+    async def create_task(self, task_id: str, task_data: dict[str, Any]) -> bool:
         """
         Create a new task record.
 
@@ -23,7 +23,7 @@ class DatabasePort(ABC):
         pass
 
     @abstractmethod
-    async def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
+    async def get_task(self, task_id: str) -> dict[str, Any] | None:
         """
         Retrieve a task by ID.
 
@@ -36,7 +36,7 @@ class DatabasePort(ABC):
         pass
 
     @abstractmethod
-    async def update_task(self, task_id: str, task_data: Dict[str, Any]) -> bool:
+    async def update_task(self, task_id: str, task_data: dict[str, Any]) -> bool:
         """
         Update an existing task.
 
@@ -65,10 +65,10 @@ class DatabasePort(ABC):
     @abstractmethod
     async def list_tasks(
         self,
-        status: Optional[str] = None,
+        status: str | None = None,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         List tasks with optional filtering.
 
@@ -85,7 +85,7 @@ class DatabasePort(ABC):
     # === Report Operations ===
 
     @abstractmethod
-    async def create_report(self, task_id: str, report_data: Dict[str, Any]) -> bool:
+    async def create_report(self, task_id: str, report_data: dict[str, Any]) -> bool:
         """
         Create or update a research report.
 
@@ -99,7 +99,7 @@ class DatabasePort(ABC):
         pass
 
     @abstractmethod
-    async def get_report(self, task_id: str) -> Optional[Dict[str, Any]]:
+    async def get_report(self, task_id: str) -> dict[str, Any] | None:
         """
         Retrieve a report by task ID.
 
@@ -116,7 +116,7 @@ class DatabasePort(ABC):
         self,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         List all reports.
 
@@ -132,7 +132,7 @@ class DatabasePort(ABC):
     # === Log Operations ===
 
     @abstractmethod
-    async def create_log(self, log_data: Dict[str, Any]) -> bool:
+    async def create_log(self, log_data: dict[str, Any]) -> bool:
         """
         Create a log entry.
 
@@ -147,13 +147,13 @@ class DatabasePort(ABC):
     @abstractmethod
     async def get_logs(
         self,
-        task_id: Optional[str] = None,
-        level: Optional[str] = None,
-        start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None,
+        task_id: str | None = None,
+        level: str | None = None,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         skip: int = 0
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Retrieve logs with optional filtering.
 
