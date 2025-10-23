@@ -3,7 +3,7 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![Docker](https://img.shields.io/badge/Docker-20.10+-blue.svg)](https://www.docker.com/)
-[![Tests](https://img.shields.io/badge/tests-116%20passing-green.svg)](.)
+[![Tests](https://img.shields.io/badge/tests-117%20passing-green.svg)](.)
 
 **Plataforma de investigación profunda asistida por IA** que utiliza el patrón de investigación iterativa con agentes inteligentes.
 
