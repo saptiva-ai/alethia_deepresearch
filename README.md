@@ -7,11 +7,9 @@
 
 **Plataforma de investigación profunda asistida por IA** que utiliza el patrón de investigación iterativa con agentes inteligentes.
 
-> ✅ **Estado:** Sistema completamente funcional (116/117 tests passing, coverage 54.60%)
-
 ---
 
-## 🎯 ¿Qué es Aletheia?
+## ¿Qué es Aletheia?
 
 Aletheia ejecuta investigaciones profundas automáticas usando:
 - **Planificación inteligente** - Descompone queries complejas en sub-tareas
