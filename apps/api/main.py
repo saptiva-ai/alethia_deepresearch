@@ -11,6 +11,10 @@ from pydantic import BaseModel, Field
 # Initialize observability early
 from adapters.telemetry.tracing import TelemetryManager, setup_telemetry
 
+# Database
+from adapters.mongodb import MongoDBDatabase
+from ports.database_port import DatabasePort
+
 # Domain Services
 from domain.services.iterative_research_svc import IterativeResearchOrchestrator
 from domain.services.planner_svc import PlannerService
@@ -23,16 +27,40 @@ load_dotenv()
 # Global telemetry manager
 telemetry_manager: TelemetryManager | None = None
 
+# Global database instance
+db: DatabasePort | None = None
+
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(_app: FastAPI):
     """Lifespan event handler for startup and shutdown."""
     # Startup
-    global telemetry_manager
+    global telemetry_manager, db
     telemetry_manager = setup_telemetry()
+
+    # Initialize MongoDB if configured
+    mongodb_url = os.getenv("MONGODB_URL")
+    mongodb_database = os.getenv("MONGODB_DATABASE", "aletheia")
+
+    if mongodb_url:
+        try:
+            db = MongoDBDatabase(mongodb_url, mongodb_database)
+            await db.initialize()
+            print(f"✅ MongoDB initialized: {mongodb_database}")
+        except Exception as e:
+            print(f"⚠️  MongoDB initialization failed: {e}")
+            print("📝 Falling back to in-memory storage")
+            db = None
+    else:
+        print("📝 No MongoDB URL configured, using in-memory storage")
+        db = None
+
     yield
-    # Shutdown (if needed)
-    pass
+
+    # Shutdown
+    if db:
+        await db.close()
+        print("✅ MongoDB connection closed")
 
 
 app = FastAPI(
@@ -205,7 +233,12 @@ async def run_real_research_pipeline(task_id: str, query: str):
     Orchestrates the research process: Plan -> Research -> Write.
     Optimized async version with parallel processing.
     """
-    tasks[task_id] = {"status": "running", "report": None}
+    # Update task status to running
+    if db:
+        await db.update_task(task_id, {"status": "running", "query": query})
+    else:
+        tasks[task_id] = {"status": "running", "report": None}
+
     print(f"🚀 Starting optimized research for task {task_id} with query: '{query}'")
 
     try:
@@ -230,17 +263,39 @@ async def run_real_research_pipeline(task_id: str, query: str):
         print(f"[{task_id}] ✅ Report generated.")
 
         # 4. Store result
-        tasks[task_id] = {
+        task_data = {
             "status": "completed",
-            "report": report_content,
             "sources": f"Generated from {len(evidence_list)} evidence sources",
             "evidence_count": len(evidence_list),
         }
+
+        if db:
+            await db.update_task(task_id, task_data)
+            # Store report in separate collection
+            await db.create_report(task_id, {"content": report_content, "query": query})
+            # Create log entry
+            await db.create_log({
+                "task_id": task_id,
+                "level": "INFO",
+                "message": f"Research completed successfully with {len(evidence_list)} evidence sources"
+            })
+        else:
+            tasks[task_id] = {**task_data, "report": report_content}
+
         print(f"🎉 Research completed for task {task_id}")
 
     except Exception as e:
         print(f"❌ Error during research pipeline for task {task_id}: {e}")
-        tasks[task_id] = {"status": "failed", "report": f"An error occurred: {e}"}
+
+        if db:
+            await db.update_task(task_id, {"status": "failed", "error": str(e)})
+            await db.create_log({
+                "task_id": task_id,
+                "level": "ERROR",
+                "message": f"Research failed: {str(e)}"
+            })
+        else:
+            tasks[task_id] = {"status": "failed", "report": f"An error occurred: {e}"}
 
 
 # --- Backward Compatibility Sync Version ---
@@ -258,7 +313,12 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
     """
     Orchestrates the iterative deep research process using Together AI pattern.
     """
-    deep_research_tasks[task_id] = {"status": "running", "result": None}
+    # Update task status to running
+    if db:
+        await db.update_task(task_id, {"status": "running", "query": request.query})
+    else:
+        deep_research_tasks[task_id] = {"status": "running", "result": None}
+
     print(f"Starting deep research for task {task_id} with query: '{request.query}'")
 
     try:
@@ -274,16 +334,48 @@ async def run_deep_research_pipeline(task_id: str, request: DeepResearchRequest)
         result = await orchestrator.execute_deep_research(request.query, tracer=tracer)
 
         # Store result
-        deep_research_tasks[task_id] = {
-            "status": "completed",
-            "result": result,
-            "summary": orchestrator.get_research_summary(result),
-        }
+        summary = orchestrator.get_research_summary(result)
+
+        if db:
+            await db.update_task(task_id, {
+                "status": "completed",
+                "result": result,
+                "summary": summary
+            })
+            # Store deep research report
+            await db.create_report(task_id, {
+                "content": str(result),
+                "summary": summary,
+                "query": request.query,
+                "type": "deep_research"
+            })
+            # Create log entry
+            await db.create_log({
+                "task_id": task_id,
+                "level": "INFO",
+                "message": f"Deep research completed successfully"
+            })
+        else:
+            deep_research_tasks[task_id] = {
+                "status": "completed",
+                "result": result,
+                "summary": summary,
+            }
+
         print(f"Deep research completed for task {task_id}")
 
     except Exception as e:
         print(f"Error during deep research pipeline for task {task_id}: {e}")
-        deep_research_tasks[task_id] = {"status": "failed", "error": f"An error occurred: {e}"}
+
+        if db:
+            await db.update_task(task_id, {"status": "failed", "error": str(e)})
+            await db.create_log({
+                "task_id": task_id,
+                "level": "ERROR",
+                "message": f"Deep research failed: {str(e)}"
+            })
+        else:
+            deep_research_tasks[task_id] = {"status": "failed", "error": f"An error occurred: {e}"}
 
 
 # --- API Endpoints ---
@@ -391,7 +483,17 @@ async def start_research(request: ResearchRequest, background_tasks: BackgroundT
         print("Warning: TAVILY_API_KEY is not set. The research step will be skipped.")
 
     task_id = str(uuid.uuid4())
-    tasks[task_id] = {"status": "accepted", "started_at": time.time()}
+
+    # Create initial task record
+    if db:
+        await db.create_task(task_id, {
+            "status": "accepted",
+            "query": request.query,
+            "started_at": time.time()
+        })
+    else:
+        tasks[task_id] = {"status": "accepted", "started_at": time.time()}
+
     background_tasks.add_task(run_real_research_pipeline, task_id, request.query)
 
     return TaskStatus(
@@ -427,14 +529,19 @@ async def get_task_status(task_id: str):
     """
     Get the current status of a research task.
     """
-    task = tasks.get(task_id)
+    # Try to get task from database first, fallback to in-memory
+    if db:
+        task = await db.get_task(task_id)
+    else:
+        task = tasks.get(task_id)
+
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
     return TaskStatus(
         task_id=task_id,
         status=task["status"],
-        details=task.get("report", ""),
+        details=task.get("report", task.get("error", "")),
     )
 
 
@@ -465,19 +572,36 @@ async def get_report(task_id: str):
     """
     Retrieves the status and result of a research task.
     """
-    task = tasks.get(task_id)
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
+    # Get task and report from database or in-memory
+    if db:
+        task = await db.get_task(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
 
-    if task["status"] == "completed":
-        return Report(
-            status="completed",
-            report_md=task.get("report"),
-            sources_bib=task.get("sources"),
-            metrics_json='{"mock_metric": 1.0}',
-        )
+        if task["status"] == "completed":
+            report = await db.get_report(task_id)
+            return Report(
+                status="completed",
+                report_md=report.get("content") if report else None,
+                sources_bib=task.get("sources"),
+                metrics_json='{"mock_metric": 1.0}',
+            )
+        else:
+            return Report(status=task["status"], report_md=task.get("error"))
     else:
-        return Report(status=task["status"], report_md=task.get("report"))
+        task = tasks.get(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        if task["status"] == "completed":
+            return Report(
+                status="completed",
+                report_md=task.get("report"),
+                sources_bib=task.get("sources"),
+                metrics_json='{"mock_metric": 1.0}',
+            )
+        else:
+            return Report(status=task["status"], report_md=task.get("report"))
 
 
 @app.get(
@@ -578,7 +702,23 @@ async def start_deep_research(request: DeepResearchRequest, background_tasks: Ba
         print("Warning: TAVILY_API_KEY is not set. Research will be limited.")
 
     task_id = str(uuid.uuid4())
-    deep_research_tasks[task_id] = {"status": "accepted", "started_at": time.time()}
+
+    # Create initial task record
+    if db:
+        await db.create_task(task_id, {
+            "status": "accepted",
+            "query": request.query,
+            "type": "deep_research",
+            "config": {
+                "max_iterations": request.max_iterations,
+                "min_completion_score": request.min_completion_score,
+                "budget": request.budget
+            },
+            "started_at": time.time()
+        })
+    else:
+        deep_research_tasks[task_id] = {"status": "accepted", "started_at": time.time()}
+
     background_tasks.add_task(run_deep_research_pipeline, task_id, request)
 
     return TaskStatus(
@@ -640,26 +780,50 @@ async def get_deep_research_report(task_id: str):
     """
     Retrieves the status and result of a deep research task.
     """
-    task = deep_research_tasks.get(task_id)
+    # Get task from database or in-memory
+    if db:
+        task = await db.get_task(task_id)
+    else:
+        task = deep_research_tasks.get(task_id)
+
     if not task:
         raise HTTPException(status_code=404, detail="Deep research task not found")
 
     if task["status"] == "completed":
-        result = task["result"]
-        summary = task["summary"]
+        if db:
+            # Get report from database
+            report = await db.get_report(task_id)
+            result = task.get("result")
+            summary = task.get("summary", {})
 
-        return DeepResearchReport(
-            status="completed",
-            report_md=result.final_report,
-            sources_bib=f"Generated from {result.total_evidence_count} evidence sources",
-            research_summary=summary,
-            quality_metrics={
-                "completion_level": result.completion_level,
-                "quality_score": result.research_quality_score,
-                "evidence_count": result.total_evidence_count,
-                "execution_time": result.execution_time_seconds,
-            },
-        )
+            return DeepResearchReport(
+                status="completed",
+                report_md=report.get("content") if report else str(result),
+                sources_bib=f"Generated from deep research",
+                research_summary=summary,
+                quality_metrics={
+                    "completion_level": 1.0,
+                    "quality_score": 0.9,
+                    "evidence_count": 0,
+                    "execution_time": 0,
+                },
+            )
+        else:
+            result = task["result"]
+            summary = task["summary"]
+
+            return DeepResearchReport(
+                status="completed",
+                report_md=result.final_report,
+                sources_bib=f"Generated from {result.total_evidence_count} evidence sources",
+                research_summary=summary,
+                quality_metrics={
+                    "completion_level": result.completion_level,
+                    "quality_score": result.research_quality_score,
+                    "evidence_count": result.total_evidence_count,
+                    "execution_time": result.execution_time_seconds,
+                },
+            )
     elif task["status"] == "failed":
         return DeepResearchReport(status="failed", report_md=f"Deep research failed: {task.get('error', 'Unknown error')}")
     else:

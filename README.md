@@ -20,12 +20,18 @@ aprovechando modelos de lenguaje de Saptiva y fuentes externas (Tavily, document
 Este proyecto está optimizado para un **setup simple y directo**:
 
 ✅ **Solo 2 API Keys requeridas**: Saptiva + Tavily
-✅ **Sin dependencias de servicios externos**: Sin bases de datos, sin contenedores obligatorios
-✅ **Python 3.11+ como único requisito** del sistema
-✅ **Docker opcional**: Funciona perfectamente sin contenedores
+✅ **MongoDB integrado**: Almacenamiento persistente para tareas, reportes y logs
+✅ **Python 3.11+ como único requisito** del sistema (modo local)
+✅ **Docker opcional**: Funciona localmente sin contenedores
 ✅ **Zero config**: Valores por defecto listos para producción
 
 **Tiempo de setup:** < 5 minutos desde cero
+
+### 💾 Almacenamiento de Datos
+
+- **Con MongoDB (Recomendado)**: Persistencia completa de tareas, reportes y logs
+- **Sin MongoDB (Fallback)**: Almacenamiento en memoria (se pierde al reiniciar)
+- **Producción**: MongoDB obligatorio para multi-worker y persistencia
 
 ---
 
@@ -63,12 +69,13 @@ Este proyecto está optimizado para un **setup simple y directo**:
   - Tavily Search: [Obtener key](https://tavily.com)
 
 ### Opcionales (No requeridos por defecto)
-- **Docker** - Solo para deployment en contenedores
+- **Docker + Docker Compose** - Para deployment con contenedores y MongoDB integrado
+- **MongoDB 7.0+** - Para almacenamiento persistente (recomendado para producción)
 - **Weaviate** - Solo si activas vector database (`VECTOR_BACKEND=weaviate`)
 - **Tesseract OCR** - Solo para procesamiento OCR de imágenes
 - **Jaeger** - Solo para trazabilidad distribuida avanzada
 
-> **Nota importante**: El sistema funciona completamente sin ningún servicio externo. La configuración minimalista es ideal para desarrollo y producción.
+> **Nota importante**: El sistema funciona completamente sin servicios externos para desarrollo. Para producción se recomienda MongoDB para persistencia de datos.
 
 ### Verificar Python 3.11
 
@@ -91,6 +98,70 @@ brew install python@3.11
 ---
 
 ## ⚡ Configuración Rápida
+
+Existen dos modos de configuración:
+
+- **🚀 Modo Contenedor (Recomendado)**: Incluye MongoDB, fácil deployment, producción ready
+- **💻 Modo Local**: Desarrollo rápido sin Docker, usa almacenamiento en memoria
+
+### Opción A: Modo Contenedor (Con MongoDB) 🚀
+
+**Ventajas:**
+- ✅ MongoDB integrado para persistencia
+- ✅ Configuración lista para producción
+- ✅ Fácil escalamiento
+- ✅ Datos persisten entre reinicios
+
+```bash
+# 1. Clonar repositorio
+git clone https://github.com/saptiva-ai/alethia_deepresearch.git
+cd alethia_deepresearch
+
+# 2. Configurar variables de entorno
+cp .env.example .env
+# Edita .env con tus API keys (Saptiva + Tavily)
+
+# 3. Iniciar servicios con Docker Compose
+docker-compose up -d
+
+# 4. Verificar estado
+curl http://localhost:8000/health
+docker logs aletheia-api
+docker logs aletheia-mongodb
+
+# 5. Ver documentación interactiva
+# Abre en tu navegador: http://localhost:8000/docs
+```
+
+**Servicios levantados:**
+- API: http://localhost:8000 (contenedor `aletheia-api`)
+- MongoDB: localhost:27018 (contenedor `aletheia-mongodb`)
+- Volúmenes persistentes: `mongodb_data`, `mongodb_config`
+
+**Comandos útiles:**
+```bash
+# Ver logs en tiempo real
+docker-compose logs -f api
+
+# Reiniciar servicios
+docker-compose restart
+
+# Detener servicios
+docker-compose down
+
+# Detener y eliminar datos
+docker-compose down -v
+```
+
+---
+
+### Opción B: Modo Local (Sin Docker) 💻
+
+**Ventajas:**
+- ✅ Setup más rápido
+- ✅ No requiere Docker
+- ✅ Ideal para desarrollo
+- ⚠️ Sin persistencia de datos (usa memoria)
 
 ### 1. Clonar y configurar entorno
 
@@ -135,9 +206,20 @@ TAVILY_API_KEY=tu_clave_tavily_aqui
 SAPTIVA_BASE_URL=https://api.saptiva.com/v1
 VECTOR_BACKEND=none
 ENVIRONMENT=development
+
+# === MongoDB (Opcional - Solo para persistencia local) ===
+# Descomenta estas líneas solo si tienes MongoDB instalado localmente
+# MONGODB_URL=mongodb://localhost:27017
+# MONGODB_DATABASE=aletheia
+
+# Nota: Las líneas de Docker Compose (mongodb://...@mongodb:27017)
+# NO funcionan en modo local. Solo usar en Docker Compose.
 ```
 
-**Nota**: Los demás valores ya tienen defaults apropiados. Solo necesitas las API keys.
+**Notas:**
+- Los demás valores ya tienen defaults apropiados
+- Solo necesitas las API keys para comenzar
+- MongoDB es opcional en modo local (usa almacenamiento en memoria si no está configurado)
 
 ### 4. Verificar configuración (opcional pero recomendado)
 
@@ -510,13 +592,101 @@ python3 tools/testing/test_saptiva_direct.py
 
 #### Problemas Comunes
 
+##### 🔑 Problemas con API Keys
+
 **Error: "API key not configured"**
 ```bash
 # Verificar que las keys estén configuradas
 cat .env | grep API_KEY
 
 # Deben estar presentes y no contener valores placeholder
+SAPTIVA_API_KEY=va-ai-...  # Debe empezar con 'va-ai-'
+TAVILY_API_KEY=tvly-...    # Debe empezar con 'tvly-'
 ```
+
+**Error: Modelos retornan 404 "Model not found"**
+```bash
+# Verificar que los nombres de modelos usen capitalización correcta
+# ❌ INCORRECTO:
+SAPTIVA_MODEL_PLANNER=SAPTIVA_OPS
+
+# ✅ CORRECTO:
+SAPTIVA_MODEL_PLANNER=Saptiva Ops
+```
+
+**Error: "URL incorrecta" o conexiones fallando**
+```bash
+# Verificar que uses .com NO .ai
+# ❌ INCORRECTO:
+SAPTIVA_BASE_URL=https://api.saptiva.ai/v1
+
+# ✅ CORRECTO:
+SAPTIVA_BASE_URL=https://api.saptiva.com/v1
+```
+
+##### 💾 Problemas con MongoDB
+
+**Error: "Task not found" después de crear tarea**
+```bash
+# Problema: MongoDB no está conectado o múltiples workers sin DB compartida
+
+# Solución 1: Verificar conexión MongoDB (modo Docker)
+docker logs aletheia-mongodb
+docker exec aletheia-mongodb mongosh --eval "db.adminCommand('ping')"
+
+# Solución 2: Verificar que API se conectó a MongoDB
+docker logs aletheia-api | grep MongoDB
+# Debe mostrar: "✅ MongoDB initialized: aletheia"
+
+# Solución 3: Si usas modo local sin MongoDB, es normal
+# Las tareas se pierden al reiniciar (modo en memoria)
+```
+
+**Error: "Port 27017 already allocated"**
+```bash
+# Problema: Otro servicio MongoDB corriendo en puerto 27017
+
+# Solución: El proyecto usa puerto 27018 por defecto
+# Verificar en .env:
+MONGO_PORT=27018  # No 27017
+
+# Si aún falla:
+docker ps -a | grep mongo
+docker stop <otro-contenedor-mongo>
+```
+
+**Error: "Failed to initialize MongoDB"**
+```bash
+# Verificar que MongoDB esté saludable
+docker ps | grep aletheia-mongodb
+# STATUS debe ser "healthy"
+
+# Ver logs de MongoDB
+docker logs aletheia-mongodb
+
+# Reiniciar MongoDB
+docker-compose restart mongodb
+
+# Si persiste, recrear volúmenes
+docker-compose down -v
+docker-compose up -d
+```
+
+**Verificar datos en MongoDB**
+```bash
+# Conectar a MongoDB y ver datos
+docker exec aletheia-mongodb mongosh \
+  -u aletheia -p aletheia_password \
+  --authenticationDatabase admin \
+  aletheia
+
+# Comandos dentro de mongosh:
+db.tasks.find().pretty()    # Ver tareas
+db.reports.find().count()   # Contar reportes
+db.logs.find().limit(5)     # Ver últimos 5 logs
+```
+
+##### 🌐 Problemas de Red y Conectividad
 
 **Error: "Timeout" o "Connection Error"**
 ```bash
@@ -527,11 +697,66 @@ SAPTIVA_READ_TIMEOUT=120
 
 **La API no responde**
 ```bash
+# Modo Docker:
+curl http://localhost:8000/health
+docker logs aletheia-api
+
+# Modo Local:
 # Verificar que el servidor esté corriendo
 curl http://localhost:8000/health
 
 # Si no responde, iniciar servidor
 uvicorn apps.api.main:app --reload
+```
+
+##### 🐳 Problemas con Docker
+
+**Error: "Container unhealthy"**
+```bash
+# Ver qué está fallando
+docker ps
+docker logs aletheia-api --tail 50
+
+# Verificar health check
+docker inspect aletheia-api | grep -A 10 Health
+
+# Reiniciar contenedor
+docker-compose restart api
+```
+
+**Error: "Build failed" o dependencias faltantes**
+```bash
+# Rebuild sin caché
+docker-compose build --no-cache
+
+# Verificar que pymongo y motor estén en requirements.txt
+cat requirements.txt | grep -E "pymongo|motor"
+```
+
+##### 🔄 Problemas de Persistencia
+
+**Las tareas desaparecen al reiniciar**
+```bash
+# Problema: Modo en memoria (sin MongoDB)
+
+# Solución: Usar Docker Compose con MongoDB
+docker-compose up -d
+
+# O configurar MongoDB local
+# Instalar MongoDB: https://www.mongodb.com/docs/manual/installation/
+# Configurar en .env:
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DATABASE=aletheia
+```
+
+**Datos antiguos permanecen después de reiniciar**
+```bash
+# Esto es CORRECTO si usas MongoDB
+# Los datos persisten en volúmenes de Docker
+
+# Para limpiar datos y empezar de cero:
+docker-compose down -v  # -v elimina volúmenes
+docker-compose up -d    # Inicia limpio
 ```
 
 ---
@@ -560,6 +785,7 @@ flowchart TB
     subgraph Ports[Port Interfaces]
         ModelPort[Model Client Port]
         SearchPort[Search Port]
+        DatabasePort[Database Port]
         VectorPort[Vector Store Port]
         ExtractPort[Document Extract Port]
         GuardPort[Guard Port]
@@ -568,6 +794,7 @@ flowchart TB
     subgraph Adapters[External Integrations]
         Saptiva[Saptiva AI Models]
         Tavily[Tavily Search API]
+        MongoDB[MongoDB Database]
         Weaviate[Weaviate Vector DB]
         PDFExtract[PDF/OCR Extractor]
         Telemetry[OpenTelemetry]
@@ -657,11 +884,14 @@ alethia_deepresearch/
 │   ├── models/             # Domain models
 │   └── services/           # Domain services
 ├── adapters/               # External integrations
+│   ├── mongodb/            # MongoDB database adapter
 │   ├── saptiva_model/      # Saptiva AI integration
 │   ├── tavily_search/      # Tavily search integration
 │   ├── weaviate_vector/    # Vector database
 │   └── telemetry/          # Observability
 ├── ports/                  # Interface contracts
+│   ├── database_port.py    # Database abstraction
+│   └── ...
 ├── tests/                  # Test suites
 │   ├── unit/              # Unit tests (99 tests)
 │   └── integration/       # Integration tests
@@ -697,6 +927,202 @@ pre-commit install
 export DEBUG=true
 export LOG_LEVEL=DEBUG
 export ENVIRONMENT=development
+```
+
+---
+
+## 💾 MongoDB: Almacenamiento Persistente
+
+### Características
+
+Aletheia usa MongoDB para almacenamiento persistente de:
+- **Tasks**: Estado de investigaciones (accepted, running, completed, failed)
+- **Reports**: Reportes completos en formato Markdown
+- **Logs**: Registro de eventos y errores con timestamps
+
+### Colecciones
+
+#### 📋 Collection: `tasks`
+```javascript
+{
+  "_id": ObjectId("..."),
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "status": "completed",
+  "query": "Análisis del mercado de IA 2025",
+  "type": "research",  // o "deep_research"
+  "evidence_count": 15,
+  "sources": "Generated from 15 evidence sources",
+  "created_at": ISODate("2025-01-15T10:00:00Z"),
+  "updated_at": ISODate("2025-01-15T10:01:30Z"),
+  "started_at": 1737799200.123
+}
+```
+
+**Índices creados:**
+- `task_id` (único)
+- `status`
+- `created_at`
+
+#### 📄 Collection: `reports`
+```javascript
+{
+  "_id": ObjectId("..."),
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "content": "# Análisis del Mercado de IA 2025\n\n## Resumen Ejecutivo...",
+  "query": "Análisis del mercado de IA 2025",
+  "type": "research",  // o "deep_research"
+  "summary": {...},     // Solo para deep_research
+  "created_at": ISODate("2025-01-15T10:01:30Z"),
+  "updated_at": ISODate("2025-01-15T10:01:30Z")
+}
+```
+
+**Índices creados:**
+- `task_id` (único)
+- `created_at`
+
+#### 📝 Collection: `logs`
+```javascript
+{
+  "_id": ObjectId("..."),
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "level": "INFO",  // DEBUG, INFO, WARNING, ERROR, CRITICAL
+  "message": "Research completed successfully with 15 evidence sources",
+  "timestamp": ISODate("2025-01-15T10:01:30Z")
+}
+```
+
+**Índices creados:**
+- `task_id`
+- `level`
+- `timestamp`
+
+### Consultas Útiles
+
+```bash
+# Conectar a MongoDB
+docker exec -it aletheia-mongodb mongosh \
+  -u aletheia -p aletheia_password \
+  --authenticationDatabase admin \
+  aletheia
+
+# Ver estadísticas
+db.tasks.countDocuments()
+db.reports.countDocuments()
+db.logs.countDocuments()
+
+# Tareas por estado
+db.tasks.aggregate([
+  { $group: { _id: "$status", count: { $sum: 1 } } }
+])
+
+# Últimas 5 investigaciones completadas
+db.tasks.find(
+  { status: "completed" }
+).sort({ created_at: -1 }).limit(5).pretty()
+
+# Reportes más recientes
+db.reports.find(
+  {},
+  { content: 0 }  // Excluir contenido largo
+).sort({ created_at: -1 }).limit(5).pretty()
+
+# Logs de errores
+db.logs.find(
+  { level: "ERROR" }
+).sort({ timestamp: -1 }).limit(10).pretty()
+
+# Logs de una tarea específica
+db.logs.find(
+  { task_id: "550e8400-e29b-41d4-a716-446655440000" }
+).sort({ timestamp: 1 }).pretty()
+
+# Eliminar tareas antiguas (> 30 días)
+db.tasks.deleteMany({
+  created_at: {
+    $lt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
+  }
+})
+
+# Backup de una colección
+db.tasks.find().forEach(function(doc) {
+  printjson(doc);
+})
+```
+
+### Modo Fallback (Sin MongoDB)
+
+Si MongoDB no está disponible, la API opera en **modo fallback**:
+
+```
+📝 No MongoDB URL configured, using in-memory storage
+```
+
+**Características del modo fallback:**
+- ✅ Todas las funcionalidades operan normalmente
+- ✅ Perfecto para desarrollo y testing
+- ⚠️ Los datos se pierden al reiniciar el servidor
+- ⚠️ No soporta múltiples workers (usa --workers 1)
+
+**Cuándo usar modo fallback:**
+- Desarrollo local rápido
+- Testing unitario
+- Demos temporales
+
+**Cuándo usar MongoDB:**
+- Producción
+- Múltiples workers
+- Necesidad de persistencia
+- Auditoría y logs históricos
+
+### Configuración de MongoDB Local
+
+Si quieres usar MongoDB localmente sin Docker:
+
+```bash
+# 1. Instalar MongoDB
+# Ubuntu/Debian:
+wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
+echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu jammy/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
+sudo apt update && sudo apt install -y mongodb-org
+
+# macOS:
+brew tap mongodb/brew
+brew install mongodb-community@7.0
+
+# 2. Iniciar MongoDB
+sudo systemctl start mongod  # Linux
+brew services start mongodb-community@7.0  # macOS
+
+# 3. Configurar en .env
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DATABASE=aletheia
+
+# 4. Reiniciar API
+uvicorn apps.api.main:app --reload
+```
+
+### Backup y Restore
+
+```bash
+# Backup completo
+docker exec aletheia-mongodb mongodump \
+  --username=aletheia \
+  --password=aletheia_password \
+  --authenticationDatabase=admin \
+  --db=aletheia \
+  --out=/backup
+
+# Copiar backup al host
+docker cp aletheia-mongodb:/backup ./mongodb-backup
+
+# Restore
+docker exec aletheia-mongodb mongorestore \
+  --username=aletheia \
+  --password=aletheia_password \
+  --authenticationDatabase=admin \
+  --db=aletheia \
+  /backup/aletheia
 ```
 
 ---
@@ -808,6 +1234,7 @@ Copyright 2025 Saptiva Inc.
 - **Saptiva AI** - Modelos de lenguaje de vanguardia
 - **Tavily** - Search API para investigación
 - **FastAPI** - Framework web moderno y rápido
+- **MongoDB** - Base de datos NoSQL para persistencia
 - **Weaviate** - Vector database escalable
 
 ---
