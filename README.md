@@ -458,7 +458,7 @@ if __name__ == "__main__":
 ## Testing
 
 ```bash
-# Unit tests (116/117 passing)
+# Unit tests (117/117 passing)
 pytest tests/unit/ -v
 
 # Integration tests
@@ -472,9 +472,8 @@ python tools/verify_system.py
 ```
 
 **Resultados actuales:**
-- **116 tests passing** (99.14%)
--  1 test con warning minor (no afecta funcionalidad)
--  **Coverage: 54.60%** (supera el 50% requerido)
+- **117 tests passing** (100%)
+-  **Coverage: 55.60%** (supera el 50% requerido)
 
 ---
 
