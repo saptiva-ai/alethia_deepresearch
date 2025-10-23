@@ -27,6 +27,8 @@ class ResearchService:
             # Use Weaviate in mock mode (no connection attempts)
             self.vector_store: VectorStorePort = WeaviateVectorAdapter(force_mock=True)
             print("Vector storage disabled - using mock storage (no Weaviate connection).")
+            # Invoke health check to keep interface consistent even in mock mode.
+            self.vector_store.health_check()
         else:
             # Initialize vector store for RAG
             self.vector_store: VectorStorePort = WeaviateVectorAdapter()
