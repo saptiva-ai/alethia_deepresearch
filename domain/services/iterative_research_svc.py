@@ -7,10 +7,10 @@ from typing import Any
 from opentelemetry import trace
 
 from adapters.telemetry.events import get_event_logger
-from adapters.websocket.progress_manager import ProgressUpdate, get_progress_manager
 
 # Telemetry imports
 from adapters.telemetry.tracing import trace_async_operation, trace_operation
+from adapters.websocket.progress_manager import ProgressUpdate, get_progress_manager
 from domain.models.evaluation import (
     CompletionLevel,
     CompletionScore,

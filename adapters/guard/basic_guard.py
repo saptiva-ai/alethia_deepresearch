@@ -187,13 +187,8 @@ class BasicGuardAdapter(GuardPort):
         if domain.startswith("www."):
             domain = domain[4:]
 
-        # Check if domain is explicitly blocked
-        if any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self.blocked_domains):
-            return False
-
-        # For now, allow all domains except blocked ones
-        # In a production system, you might want to implement an allowlist
-        return True
+        # For now, allow all domains except blocked ones; production systems may require an allowlist
+        return not any(domain == blocked or domain.endswith(f".{blocked}") for blocked in self.blocked_domains)
 
     def get_policy_violations(self, content: str) -> list[dict[str, Any]]:
         """Get detailed policy violations found in content."""

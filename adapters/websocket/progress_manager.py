@@ -8,9 +8,9 @@ to clients monitoring research tasks.
 from __future__ import annotations
 
 import asyncio
-import json
 from dataclasses import asdict, dataclass
 from datetime import datetime
+import json
 from typing import Any
 
 from fastapi import WebSocket

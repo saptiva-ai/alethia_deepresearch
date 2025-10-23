@@ -30,22 +30,22 @@ Query: "Latest AI trends 2025"
 
 ---
 
-## 📊 Arquitectura
+## Arquitectura
 
 ```mermaid
 graph TB
-    subgraph Client["🌐 Cliente"]
+    subgraph Client["Cliente"]
         HTTP[HTTP REST API]
         WS[WebSocket]
     end
 
-    subgraph API["⚡ FastAPI Application"]
+    subgraph API["FastAPI Application"]
         Router[API Router]
         BG[Background Tasks]
         PM[Progress Manager]
     end
 
-    subgraph Domain["🧠 Domain Services"]
+    subgraph Domain["Domain Services"]
         Planner[Planner Service<br/>Saptiva Ops]
         Researcher[Researcher Service<br/>Saptiva Ops]
         Evaluator[Evaluator Service<br/>Saptiva Ops]
@@ -53,7 +53,7 @@ graph TB
         Orchestrator[Iterative Research<br/>Orchestrator]
     end
 
-    subgraph Adapters["🔌 Adapters"]
+    subgraph Adapters["Adapters"]
         Saptiva[Saptiva AI Client<br/>LLM Models]
         Tavily[Tavily Search<br/>Web Search API]
         Mongo[(MongoDB<br/>Tasks, Reports, Logs)]
@@ -99,7 +99,7 @@ graph TB
 
 ---
 
-## 🚀 Inicio Rápido (5 minutos)
+## Inicio Rápido (5 minutos)
 
 ### 1. Requisitos Previos
 
@@ -193,10 +193,10 @@ curl -X POST http://localhost:8000/research \
 # }
 
 # 2. Monitorear status
-curl http://localhost:8000/tasks/abc-123-def-456/status
+curl "http://localhost:8000/tasks/abc-123-def-456/status"
 
 # 3. Obtener reporte cuando status=completed
-curl http://localhost:8000/reports/abc-123-def-456 | jq -r '.report_md' > report.md
+curl "http://localhost:8000/reports/abc-123-def-456" | jq -r '.report_md' > report.md
 ```
 
 ---
@@ -222,13 +222,13 @@ curl -X POST http://localhost:8000/deep-research \
 # }
 
 # 2. Monitorear progreso
-watch -n 5 'curl -s http://localhost:8000/tasks/xyz-789-uvw-012/status | jq'
+watch -n 5 "curl -s 'http://localhost:8000/tasks/xyz-789-uvw-012/status' | jq"
 
 # 3. Obtener reporte completo
-curl http://localhost:8000/deep-research/xyz-789-uvw-012 | jq '.report_md' -r > deep_report.md
+curl "http://localhost:8000/deep-research/xyz-789-uvw-012" | jq '.report_md' -r > deep_report.md
 
 # 4. Ver métricas de calidad
-curl http://localhost:8000/deep-research/xyz-789-uvw-012 | jq '.quality_metrics'
+curl "http://localhost:8000/deep-research/xyz-789-uvw-012" | jq '.quality_metrics'
 ```
 
 **Parámetros de Deep Research:**
@@ -246,7 +246,7 @@ const taskId = 'xyz-789-uvw-012';
 const ws = new WebSocket(`ws://localhost:8000/ws/progress/${taskId}`);
 
 ws.onopen = () => {
-  console.log('✅ WebSocket conectado');
+  console.log('WebSocket conectado');
 };
 
 ws.onmessage = (event) => {
@@ -301,11 +301,11 @@ ws.onmessage = (event) => {
 };
 
 ws.onerror = (error) => {
-  console.error('❌ WebSocket error:', error);
+  console.error('WebSocket error:', error);
 };
 
 ws.onclose = () => {
-  console.log('🔌 WebSocket cerrado');
+  console.log('WebSocket cerrado');
 };
 
 // Opcional: enviar pings periódicos para mantener conexión
@@ -336,7 +336,7 @@ async def monitor_research(task_id: str):
 
     try:
         async with websockets.connect(ws_url, ping_interval=20) as websocket:
-            print("✅ WebSocket conectado - recibiendo actualizaciones...\n")
+            print("WebSocket conectado - recibiendo actualizaciones...\n")
 
             while True:
                 try:
@@ -381,9 +381,9 @@ async def monitor_research(task_id: str):
                     await websocket.send("ping")
 
     except websockets.exceptions.WebSocketException as e:
-        print(f"❌ Error de WebSocket: {e}")
+        print(f"Error de WebSocket: {e}")
     except Exception as e:
-        print(f"❌ Error inesperado: {e}")
+        print(f"Error inesperado: {e}")
 
 def start_deep_research(query: str) -> str:
     """Inicia una deep research y retorna el task_id."""
@@ -407,12 +407,12 @@ async def main():
 
     # Iniciar investigación
     task_id = start_deep_research(query)
-    print(f"✅ Task ID: {task_id}\n")
+    print(f"Task ID: {task_id}\n")
 
     # Monitorear progreso
     await monitor_research(task_id)
 
-    print(f"\n📥 Descargando reporte...")
+    print(f"\nDescargando reporte...")
 
     # Obtener reporte
     response = requests.get(f"http://localhost:8000/deep-research/{task_id}")
@@ -422,7 +422,7 @@ async def main():
     if report_data.get("status") == "completed":
         with open(f"report_{task_id[:8]}.md", "w") as f:
             f.write(report_data["report_md"])
-        print(f"✅ Reporte guardado: report_{task_id[:8]}.md")
+        print(f"Reporte guardado: report_{task_id[:8]}.md")
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -430,7 +430,7 @@ if __name__ == "__main__":
 
 ---
 
-## 🔑 Features Principales
+## Features Principales
 
 ### 1. Investigación Simple (`POST /research`)
 - Búsqueda web automática con Tavily
@@ -457,7 +457,7 @@ if __name__ == "__main__":
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Unit tests (116/117 passing)
@@ -474,13 +474,13 @@ python tools/verify_system.py
 ```
 
 **Resultados actuales:**
-- ✅ **116 tests passing** (99.14%)
-- ⚠️ 1 test con warning minor (no afecta funcionalidad)
-- 📊 **Coverage: 54.60%** (supera el 50% requerido)
+- **116 tests passing** (99.14%)
+-  1 test con warning minor (no afecta funcionalidad)
+-  **Coverage: 54.60%** (supera el 50% requerido)
 
 ---
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 alethia_deepresearch/
@@ -512,7 +512,7 @@ alethia_deepresearch/
 
 ---
 
-## 🔧 Configuración Avanzada
+## Configuración Avanzada
 
 ### Variables de Entorno Completas
 
@@ -563,7 +563,7 @@ VECTOR_BACKEND=none  # none | weaviate
 
 ---
 
-## 🚢 Deployment
+## Deployment
 
 ### Docker Compose (Producción)
 
@@ -602,7 +602,7 @@ curl http://localhost:8000/health
 
 ---
 
-## 🐛 Solución de Problemas
+## Solución de Problemas
 
 ### Error: "Python version too old"
 ```bash
@@ -650,7 +650,7 @@ setInterval(() => ws.send('ping'), 20000);
 
 ---
 
-## 📚 Documentación Adicional
+## Documentación Adicional
 
 - **[IMPLEMENTATION_SUMMARY.md](docs/IMPLEMENTATION_SUMMARY.md)** - Detalles de implementación
 - **[Testing Guide](docs/testing/TESTING_GUIDE.md)** - Guía completa de testing
@@ -659,7 +659,7 @@ setInterval(() => ws.send('ping'), 20000);
 
 ---
 
-## 🤝 Contribuciones
+## Contribuciones
 
 Las contribuciones son bienvenidas! Por favor:
 
@@ -676,7 +676,7 @@ Las contribuciones son bienvenidas! Por favor:
 
 ---
 
-## 🙏 Agradecimientos
+## Agradecimientos
 
 - **[Saptiva AI](https://saptiva.ai)** - Modelos de lenguaje
 - **[Tavily](https://tavily.com)** - API de búsqueda web
@@ -684,7 +684,7 @@ Las contribuciones son bienvenidas! Por favor:
 
 ---
 
-## 📞 Soporte
+## Soporte
 
 - **Issues:** [GitHub Issues](https://github.com/saptiva-ai/alethia_deepresearch/issues)
 - **Documentación:** [docs/](docs/)

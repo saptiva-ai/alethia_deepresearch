@@ -18,13 +18,13 @@ Uso:
 
 import argparse
 import asyncio
+from datetime import datetime
 import json
 import sys
 import time
 
 import requests
 import websockets
-from datetime import datetime
 
 
 class DeepResearchClient:
@@ -139,7 +139,7 @@ class DeepResearchClient:
                         # Format and display the update
                         event_type = update.get("event_type", "unknown")
                         message_text = update.get("message", "")
-                        timestamp = update.get("timestamp", "")
+                        timestamp = update.get("timestamp")
                         data = update.get("data", {})
 
                         # Display with emoji based on event type
@@ -157,7 +157,11 @@ class DeepResearchClient:
                         }
                         emoji = emoji_map.get(event_type, "ℹ️")
 
-                        print(f"   {emoji} [{elapsed:.1f}s] {message_text}")
+                        time_context = f"{elapsed:.1f}s"
+                        if timestamp:
+                            time_context = f"{time_context} | {timestamp}"
+
+                        print(f"   {emoji} [{time_context}] {message_text}")
 
                         # Show additional data for some events
                         if event_type == "evaluation" and data:
@@ -167,7 +171,8 @@ class DeepResearchClient:
                         if event_type == "gap_analysis" and data:
                             gaps = data.get("gaps", [])
                             if gaps:
-                                print(f"      └─ Top gaps: {', '.join([g['type'] for g in gaps[:2]])}")
+                                gap_types = ", ".join(g.get("type", "") for g in gaps[:2])
+                                print(f"      └─ Top gaps: {gap_types}")
 
                         # Check if completed or failed
                         if event_type == "completed":
@@ -180,7 +185,7 @@ class DeepResearchClient:
                             print(f"\n❌ La investigación falló: {error}")
                             return None
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         # No message in 30s, send ping
                         await websocket.send("ping")
                         continue
@@ -212,11 +217,11 @@ def format_research_summary(summary: dict) -> str:
     lines.append("📋 Resumen de Investigación:")
     lines.append(f"   • Iteraciones:       {summary.get('iterations_completed', 0)}")
 
-    gaps = summary.get('gaps_identified', [])
+    gaps = summary.get("gaps_identified", [])
     if gaps:
         lines.append(f"   • Brechas:           {', '.join(gaps[:3])}")
 
-    findings = summary.get('key_findings', [])
+    findings = summary.get("key_findings", [])
     if findings:
         lines.append("   • Hallazgos clave:")
         for finding in findings[:3]:
@@ -229,8 +234,8 @@ def save_report(report_md: str, query: str) -> str:
     """Guarda el reporte en un archivo"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     # Sanitize query for filename
-    safe_query = "".join(c for c in query[:30] if c.isalnum() or c in (' ', '-', '_')).strip()
-    safe_query = safe_query.replace(' ', '_')
+    safe_query = "".join(c for c in query[:30] if c.isalnum() or c in (" ", "-", "_")).strip()
+    safe_query = safe_query.replace(" ", "_")
     filename = f"deep_research_{safe_query}_{timestamp}.md"
 
     with open(filename, "w", encoding="utf-8") as f:

@@ -9,9 +9,9 @@ Uso:
     python examples/simple_research.py "Tu consulta aquí"
 """
 
+from datetime import datetime
 import sys
 import time
-from datetime import datetime
 
 import requests
 

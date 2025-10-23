@@ -1,8 +1,8 @@
+from contextlib import asynccontextmanager
+from functools import lru_cache
 import os
 import time
 import uuid
-from contextlib import asynccontextmanager
-from functools import lru_cache
 
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, HTTPException, WebSocket, WebSocketDisconnect, status
@@ -889,7 +889,7 @@ async def websocket_progress(websocket: WebSocket, task_id: str):
                 if data == "ping":
                     await websocket.send_text("pong")
 
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 # Timeout is normal - just continue to keep connection alive
                 # This allows ProgressManager.broadcast() to send updates
                 continue
