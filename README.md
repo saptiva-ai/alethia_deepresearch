@@ -1,4 +1,4 @@
-# Aletheia Deep Research
+# Saptiva Deep Research
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
@@ -9,7 +9,7 @@
 
 ---
 
-## ¿Qué es Aletheia?
+## ¿Qué es Saptiva DeepResearch?
 
 Aletheia ejecuta investigaciones profundas automáticas usando:
 - **Planificación inteligente** - Descompone queries complejas en sub-tareas
